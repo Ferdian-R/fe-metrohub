@@ -180,7 +180,7 @@ export const AdminInternDetailPage = () => {
       {activeTab === 'ringkasan' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Card Kiri: Informasi Magang */}
-          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200/90 p-6 md:p-7 shadow-2xs">
+          <div className="lg:col-span-7 bg-white rounded-xl border border-slate-200/90 p-6 md:p-7 shadow-2xs">
             <h3 className="text-base font-semibold text-slate-900 font-lexend mb-5">
               Informasi magang
             </h3>
@@ -235,7 +235,7 @@ export const AdminInternDetailPage = () => {
           </div>
 
           {/* Card Kanan: Ringkasan Hari Ini Sesuai Figma */}
-          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/90 p-6 md:p-7 shadow-2xs flex flex-col justify-between">
+          <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200/90 p-6 md:p-7 shadow-2xs flex flex-col justify-between">
             <div>
               <h3 className="text-base font-semibold text-slate-900 font-lexend">
                 Ringkasan hari ini
@@ -286,21 +286,21 @@ export const AdminInternDetailPage = () => {
 
       {/* Tab Absensi Placeholder */}
       {activeTab === 'absensi' && (
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-8 text-center text-xs text-slate-500 shadow-2xs">
+        <div className="bg-white rounded-xl border border-slate-200/90 p-8 text-center text-xs text-slate-500 shadow-2xs">
           Riwayat presensi anak magang untuk periode aktif.
         </div>
       )}
 
       {/* Tab Logbook Placeholder */}
       {activeTab === 'logbook' && (
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-8 text-center text-xs text-slate-500 shadow-2xs">
+        <div className="bg-white rounded-xl border border-slate-200/90 p-8 text-center text-xs text-slate-500 shadow-2xs">
           Daftar rekam logbook kegiatan harian peserta.
         </div>
       )}
 
       {/* Tab Tugas Placeholder */}
       {activeTab === 'tugas' && (
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-8 text-center text-xs text-slate-500 shadow-2xs">
+        <div className="bg-white rounded-xl border border-slate-200/90 p-8 text-center text-xs text-slate-500 shadow-2xs">
           Penugasan dan status progres pengerjaan tugas peserta.
         </div>
       )}
@@ -310,7 +310,7 @@ export const AdminInternDetailPage = () => {
       {/* ======================================================== */}
       {showStatusModal && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-2xs animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 md:p-7 shadow-2xl relative border border-slate-200">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 md:p-7 shadow-2xl relative border border-slate-200">
             <div className="flex items-center justify-between pb-2">
               <h3 className="text-xl font-semibold text-slate-900 font-lexend">
                 Ubah Status Kerja
@@ -406,7 +406,7 @@ export const AdminInternDetailPage = () => {
       {/* ======================================================== */}
       {showEditModal && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-2xs animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative border border-slate-200">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative border border-slate-200">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-semibold text-slate-900 font-lexend">
                 Ubah Data Peserta

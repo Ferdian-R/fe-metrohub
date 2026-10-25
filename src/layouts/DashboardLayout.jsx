@@ -193,8 +193,8 @@ export const DashboardLayout = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header Sticky - Aligned with main container */}
-        <header className="h-14 bg-white/95 backdrop-blur-xs border-b border-[#e2e7e4] px-6 md:px-8 lg:px-10 sticky top-0 z-30 shrink-0 flex items-center">
-          <div className="w-full max-w-[1400px] mx-auto flex items-center justify-between">
+        <header className="h-14 bg-white/95 backdrop-blur-xs border-b border-[#e2e7e4] px-6 md:px-8 sticky top-0 z-30 shrink-0 flex items-center">
+          <div className="w-full max-w-[1600px] mx-auto flex items-center justify-between">
             <div className="text-xs text-slate-500 font-medium">
               {headerContext}
             </div>
@@ -255,8 +255,8 @@ export const DashboardLayout = () => {
         </header>
 
         {/* Page View Container - Lebar & Di Tengah Konsisten */}
-        <main className="flex-1 px-6 md:px-8 lg:px-10 py-6 md:py-8 w-full">
-          <div className="w-full max-w-[1400px] mx-auto">
+        <main className="flex-1 px-6 md:px-8 py-6 md:py-8 w-full">
+          <div className="w-full max-w-[1600px] mx-auto">
             <Outlet />
           </div>
         </main>

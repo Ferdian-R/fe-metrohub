@@ -104,7 +104,7 @@ export const InternDashboardPage = () => {
       </div>
 
       {/* Tindakan Berikutnya - Hero Action Banner */}
-      <div className="bg-[#17362f] rounded-2xl p-6 md:p-7 text-white flex flex-col md:flex-row md:items-center justify-between gap-5 shadow-sm">
+      <div className="bg-[#17362f] rounded-xl p-6 md:p-7 text-white flex flex-col md:flex-row md:items-center justify-between gap-5 shadow-sm">
         <div className="space-y-1.5 max-w-2xl">
           <p className="text-[11px] font-bold tracking-widest text-[#8eb8aa] uppercase font-source-sans">
             TINDAKAN BERIKUTNYA
@@ -130,7 +130,7 @@ export const InternDashboardPage = () => {
       {/* Grid 2 Kolom: Status hari ini & Masa magang */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Card 1: Status hari ini */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs flex flex-col justify-between">
+        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <h3 className="text-base font-bold text-slate-900 font-lexend">
@@ -186,7 +186,7 @@ export const InternDashboardPage = () => {
         </div>
 
         {/* Card 2: Masa magang */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs">
+        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs">
           <div>
             <p className="text-sm font-medium text-slate-500 font-source-sans">
               Masa magang
@@ -215,7 +215,7 @@ export const InternDashboardPage = () => {
       </div>
 
       {/* Card 3: Tenggat terdekat */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs">
+      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs">
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
           <div>
             <h3 className="text-base font-bold text-slate-900 font-lexend">

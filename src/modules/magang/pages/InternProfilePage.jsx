@@ -38,7 +38,7 @@ export const InternProfilePage = () => {
       {/* Grid 2 Kolom: Kartu Identitas & Kartu Informasi Magang */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
         {/* Kolom Kiri: Kartu Identitas Akun */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-2xs flex flex-col items-center justify-center">
+        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center shadow-2xs flex flex-col items-center justify-center">
           {/* Avatar Lingkaran Besar */}
           <div className="w-24 h-24 rounded-full bg-[#dbe8e2] text-[#17362f] font-bold text-2xl flex items-center justify-center mx-auto mb-4 shadow-inner">
             {profileData.inisial}
@@ -59,7 +59,7 @@ export const InternProfilePage = () => {
         </div>
 
         {/* Kolom Kanan: Kartu Informasi Magang */}
-        <div className="md:col-span-2 bg-white rounded-2xl border border-slate-200 p-8 shadow-2xs space-y-6">
+        <div className="md:col-span-2 bg-white rounded-xl border border-slate-200 p-8 shadow-2xs space-y-6">
           <h2 className="text-lg font-bold text-slate-900 font-lexend">
             Informasi magang
           </h2>

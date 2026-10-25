@@ -397,7 +397,7 @@ export const AdminInternsPage = () => {
       {/* ======================================================== */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-2xs animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative border border-slate-200">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative border border-slate-200">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-xl font-semibold text-slate-900 font-lexend">
                 Tambah Anak Magang
@@ -574,7 +574,7 @@ export const AdminInternsPage = () => {
       {/* ======================================================== */}
       {showEditModal && selectedIntern && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-2xs animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative border border-slate-200">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative border border-slate-200">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-xl font-semibold text-slate-900 font-lexend">
                 Ubah Data Anak Magang
@@ -748,7 +748,7 @@ export const AdminInternsPage = () => {
       {/* ======================================================== */}
       {showDetailModal && selectedIntern && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-2xs animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 md:p-7 shadow-2xl relative border border-slate-200">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 md:p-7 shadow-2xl relative border border-slate-200">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
               <div>
                 <span className="text-[10px] font-bold text-[#17362f] uppercase tracking-wider">

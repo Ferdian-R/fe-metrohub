@@ -125,7 +125,7 @@ export const InternTasksPage = () => {
       {/* Daftar Kartu Tugas */}
       <div className="space-y-4">
         {filteredTasks.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-2xs">
+          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center shadow-2xs">
             <CheckCircle2 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
             <p className="text-sm font-semibold text-slate-700 font-lexend">
               Tidak ada tugas dalam kategori ini
@@ -135,7 +135,7 @@ export const InternTasksPage = () => {
           filteredTasks.map((task) => (
             <div
               key={task.id}
-              className="bg-white rounded-2xl border border-slate-200 p-6 md:p-7 shadow-2xs space-y-4 hover:border-slate-300 transition"
+              className="bg-white rounded-xl border border-slate-200 p-6 md:p-7 shadow-2xs space-y-4 hover:border-slate-300 transition"
             >
               {/* Baris Atas: Badge Terlambat (jika ada) dan Badge Status */}
               <div>
@@ -206,7 +206,7 @@ export const InternTasksPage = () => {
       {/* ======================================================== */}
       {selectedTaskToUpdate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full max-h-[92vh] flex flex-col overflow-hidden">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xl max-w-lg w-full max-h-[92vh] flex flex-col overflow-hidden">
             {/* Modal Header */}
             <div className="p-6 border-b border-slate-100 flex items-start justify-between">
               <div>

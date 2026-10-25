@@ -182,7 +182,7 @@ export const InternAttendancePage = () => {
       {/* Grid Utama: Form Absensi (Kiri 2 Kolom) & Status Hari Ini (Kanan 1 Kolom) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Kolom Kiri: Form Kartu Absensi */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-6 md:p-8 shadow-2xs space-y-6">
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6 md:p-8 shadow-2xs space-y-6">
           {/* Stepper Indikator Langkah */}
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center gap-2 text-xs font-source-sans">
@@ -230,7 +230,7 @@ export const InternAttendancePage = () => {
               </h2>
 
               {/* Area Preview Foto */}
-              <div className="bg-[#f0f3f1] border border-slate-200 rounded-2xl p-8 flex flex-col items-center justify-center min-h-[220px] text-center">
+              <div className="bg-[#f0f3f1] border border-slate-200 rounded-xl p-8 flex flex-col items-center justify-center min-h-[220px] text-center">
                 {hasPhoto ? (
                   <div className="flex flex-col items-center space-y-2">
                     <div className="w-16 h-16 rounded-full bg-slate-300 flex items-center justify-center text-slate-600 shadow-inner">
@@ -377,7 +377,7 @@ export const InternAttendancePage = () => {
                 Check-out
               </h2>
 
-              <div className="bg-[#f0f3f1] border border-slate-200 rounded-2xl p-8 flex flex-col items-center justify-center min-h-[220px] text-center">
+              <div className="bg-[#f0f3f1] border border-slate-200 rounded-xl p-8 flex flex-col items-center justify-center min-h-[220px] text-center">
                 {hasPhoto ? (
                   <div className="flex flex-col items-center space-y-2">
                     <div className="w-16 h-16 rounded-full bg-slate-300 flex items-center justify-center text-slate-600 shadow-inner">
@@ -547,7 +547,7 @@ export const InternAttendancePage = () => {
         </div>
 
         {/* Kolom Kanan: Card Status Hari Ini */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-6">
+        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs space-y-6">
           <div className="pb-3 border-b border-slate-100">
             <h3 className="text-base font-bold text-slate-900 font-lexend">
               Status hari ini

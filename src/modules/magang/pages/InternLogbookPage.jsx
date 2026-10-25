@@ -137,7 +137,7 @@ export const InternLogbookPage = () => {
       {/* Grid Konten: Editor Logbook (Kiri 2 Kolom) & Riwayat + Status (Kanan 1 Kolom) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Kolom Kiri: Form Editor Logbook */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-6 md:p-8 shadow-2xs space-y-5">
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6 md:p-8 shadow-2xs space-y-5">
           {/* Header Card Logbook */}
           <div className="flex items-start justify-between pb-3 border-b border-slate-100">
             <div>
@@ -345,7 +345,7 @@ export const InternLogbookPage = () => {
         {/* Kolom Kanan: Card Riwayat Terbaru (Figma M-03 Image 1) & Status Hari Ini */}
         <div className="space-y-6">
           {/* Card 1: Riwayat Terbaru */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-4">
+          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs space-y-4">
             <div className="pb-3 border-b border-slate-100">
               <h3 className="text-base font-bold text-slate-900 font-lexend">
                 Riwayat terbaru
@@ -367,7 +367,7 @@ export const InternLogbookPage = () => {
           </div>
 
           {/* Card 2: Status Hari Ini (Kompak) */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-4">
+          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs space-y-4">
             <div className="pb-3 border-b border-slate-100">
               <h3 className="text-base font-bold text-slate-900 font-lexend">
                 Status hari ini

@@ -350,7 +350,7 @@ export const AdminTasksPage = () => {
       {/* ======================================================== */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-md w-full max-h-[92vh] flex flex-col overflow-hidden">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xl max-w-md w-full max-h-[92vh] flex flex-col overflow-hidden">
             {/* Modal Header */}
             <div className="p-6 pb-4 flex items-center justify-between border-b border-slate-100">
               <h2 className="text-xl font-semibold text-slate-900 font-lexend">
@@ -505,7 +505,7 @@ export const AdminTasksPage = () => {
       {/* ======================================================== */}
       {selectedDetailTask && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full max-h-[92vh] flex flex-col overflow-hidden">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xl max-w-lg w-full max-h-[92vh] flex flex-col overflow-hidden">
             {/* Modal Header */}
             <div className="p-6 pb-4 flex items-start justify-between border-b border-slate-100">
               <div>

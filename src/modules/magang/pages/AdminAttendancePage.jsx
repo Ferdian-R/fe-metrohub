@@ -335,7 +335,7 @@ export const AdminAttendancePage = () => {
       {/* Modal Detail Bukti Absensi (A-04 / Detail Bukti Absensi) */}
       {activeModalItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden">
             {/* Modal Header */}
             <div className="p-6 pb-4 flex items-start justify-between border-b border-slate-100">
               <div>
