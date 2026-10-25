@@ -2,14 +2,10 @@ import React, { useState, useMemo } from 'react';
 import {
   Plus,
   X,
-  CheckCircle2,
 } from 'lucide-react';
 
 export const AdminInternsPage = () => {
-  // Skenario View: 'normal', 'after_f01', 'after_f02'
-  const [activeScenario, setActiveScenario] = useState('normal');
-
-  // Data Awal sesuai Mockup Figma A-02
+  // Data Peserta Magang
   const [interns, setInterns] = useState([
     {
       id: 1,
@@ -46,25 +42,11 @@ export const AdminInternsPage = () => {
     },
   ]);
 
-  // Data Khusus untuk Skenario AFTER F01 (Peserta Baru Nabila)
-  const [recentAddedIntern, setRecentAddedIntern] = useState({
-    nama: 'Nabila Putri',
-    email: 'nabila@metro.demo',
-    kampus: 'Universitas Negeri Yogyakarta',
-    periodeFormatted: '20 Okt—31 Des 2026',
-    status_kerja: 'Remote',
-    status_periode: 'Aktif',
-  });
+  // State untuk data akun terhubung setelah F01 (Tambah)
+  const [lastAddedAccount, setLastAddedAccount] = useState(null);
 
-  // Data Khusus untuk Skenario AFTER F02 (Update Raka)
-  const [recentUpdatedIntern, setRecentUpdatedIntern] = useState({
-    nama: 'Raka Aditya',
-    email: 'raka@metro.demo',
-    kampus: 'Universitas Negeri Yogyakarta',
-    periodeFormatted: '01 Agustus—31 Desember 2026',
-    status_kerja: 'On-site',
-    status_periode: 'Aktif',
-  });
+  // Success Banner State
+  const [successBanner, setSuccessBanner] = useState(null);
 
   // Filter & Pencarian
   const [searchQuery, setSearchQuery] = useState('');
@@ -87,10 +69,9 @@ export const AdminInternsPage = () => {
     status_kerja: 'Remote',
   });
 
-  // Form Validation Errors
   const [formErrors, setFormErrors] = useState({});
 
-  // Filter Logic
+  // Filter Data
   const filteredInterns = useMemo(() => {
     return interns.filter((intern) => {
       const matchSearch =
@@ -134,7 +115,7 @@ export const AdminInternsPage = () => {
     setShowAddModal(true);
   };
 
-  // Simpan Tambah Anak Magang (F01) -> Mengarahkan ke Skenario AFTER F01
+  // Simpan Tambah Anak Magang (F01)
   const handleSaveAdd = (e) => {
     e.preventDefault();
     const errors = {};
@@ -147,7 +128,7 @@ export const AdminInternsPage = () => {
       errors.email = 'Email sudah digunakan. Gunakan email lain untuk peserta baru.';
     }
 
-    // Validasi 2: Periode tidak valid (tanggal selesai < tanggal mulai)
+    // Validasi 2: Periode tidak valid
     if (formData.tanggal_mulai && formData.tanggal_selesai) {
       if (new Date(formData.tanggal_selesai) < new Date(formData.tanggal_mulai)) {
         errors.tanggal_selesai = 'Tanggal selesai harus sama dengan atau setelah tanggal mulai.';
@@ -172,9 +153,19 @@ export const AdminInternsPage = () => {
     };
 
     setInterns([...interns, newIntern]);
-    setRecentAddedIntern(newIntern);
     setShowAddModal(false);
-    setActiveScenario('after_f01');
+
+    // Banner & Akun Terhubung sesuai Figma AFTER F01
+    setSuccessBanner({
+      title: `${newIntern.nama} berhasil ditambahkan`,
+      subtitle: `Akun ${newIntern.email} terhubung dengan peserta ${newIntern.nama}.`,
+    });
+    setLastAddedAccount({
+      nama: newIntern.nama,
+      email: newIntern.email,
+      role: 'Anak Magang',
+      status: 'Aktif',
+    });
   };
 
   // Buka Modal Ubah (F02)
@@ -192,7 +183,7 @@ export const AdminInternsPage = () => {
     setShowEditModal(true);
   };
 
-  // Simpan Ubah Anak Magang (F02) -> Mengarahkan ke Skenario AFTER F02
+  // Simpan Ubah Anak Magang (F02)
   const handleSaveEdit = (e) => {
     e.preventDefault();
     const errors = {};
@@ -228,263 +219,170 @@ export const AdminInternsPage = () => {
     };
 
     setInterns(interns.map((item) => (item.id === selectedIntern.id ? updated : item)));
-    setRecentUpdatedIntern(updated);
     setShowEditModal(false);
-    setActiveScenario('after_f02');
+
+    // Banner sesuai Figma AFTER F02
+    setSuccessBanner({
+      title: `Data ${updated.nama} tersimpan`,
+      subtitle: `Perubahan diterapkan pada peserta yang sama. Akun ${updated.email} tetap terhubung.`,
+    });
+    setLastAddedAccount(null);
   };
 
   return (
-    <div className="space-y-8">
-      {/* Scenario Switcher Tabs untuk mempermudah review Figma */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-2 bg-white rounded-xl border border-slate-200">
-        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider pl-2">
-          Pilih Tampilan Skenario Figma:
-        </span>
-        <div className="flex flex-wrap items-center gap-1.5">
+    <div className="space-y-6">
+      {/* Banner Notifikasi Sukses */}
+      {successBanner && (
+        <div className="p-4 md:p-5 rounded-xl bg-[#eaf4ef] border border-[#a4d4bc] text-[#17362f] flex items-start justify-between transition animate-fadeIn">
+          <div>
+            <h4 className="font-bold text-sm md:text-base text-[#17362f]">
+              {successBanner.title}
+            </h4>
+            <p className="text-xs text-[#3b6357] mt-0.5">{successBanner.subtitle}</p>
+          </div>
           <button
             type="button"
-            onClick={() => setActiveScenario('normal')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-              activeScenario === 'normal'
-                ? 'bg-[#17362f] text-white shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
+            onClick={() => setSuccessBanner(null)}
+            className="text-[#3b6357] hover:text-[#17362f] p-1 rounded-md"
           >
-            Tabel Utama (A-02)
+            <X className="w-4 h-4" />
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveScenario('after_f01')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-              activeScenario === 'after_f01'
-                ? 'bg-[#17362f] text-white shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            AFTER F01 (Peserta Baru Ditambahkan)
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveScenario('after_f02')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-              activeScenario === 'after_f02'
-                ? 'bg-[#17362f] text-white shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            AFTER F02 (Peserta Diperbarui)
-          </button>
-        </div>
-      </div>
-
-      {/* ======================================================== */}
-      {/* 1. SKENARIO UTAMA: TABEL A-02                           */}
-      {/* ======================================================== */}
-      {activeScenario === 'normal' && (
-        <div className="space-y-6 animate-fadeIn">
-          {/* Header Halaman Sesuai Figma */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl md:text-[26px] font-bold text-slate-900 tracking-tight leading-tight">
-                Data Anak Magang
-              </h1>
-              <p className="text-xs md:text-sm text-slate-500 mt-0.5">
-                Data peserta, periode, dan status kerja.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleOpenAddModal}
-              className="self-start sm:self-auto px-4 py-2.5 bg-[#17362f] hover:bg-[#122b25] active:scale-[0.99] text-white text-xs md:text-sm font-semibold rounded-lg flex items-center gap-2 shadow-xs transition"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Tambah Anak Magang</span>
-            </button>
-          </div>
-
-          {/* Filter Bar */}
-          <div className="bg-white rounded-xl border border-slate-200/90 p-3 shadow-2xs flex flex-col md:flex-row items-center gap-3">
-            <div className="relative flex-1 w-full">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari nama, kampus, atau email"
-                className="w-full px-4 py-2 rounded-lg border border-slate-200 bg-[#fbfcfc] text-xs md:text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#17362f] focus:border-[#17362f] transition placeholder:text-slate-400"
-              />
-            </div>
-
-            <div className="w-full md:w-52">
-              <select
-                value={filterStatusKerja}
-                onChange={(e) => setFilterStatusKerja(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs md:text-sm text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#17362f] cursor-pointer"
-              >
-                <option value="Semua status kerja">Semua status kerja</option>
-                <option value="On-site">On-site</option>
-                <option value="Remote">Remote</option>
-              </select>
-            </div>
-
-            <div className="w-full md:w-48">
-              <select
-                value={filterPeriode}
-                onChange={(e) => setFilterPeriode(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs md:text-sm text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#17362f] cursor-pointer"
-              >
-                <option value="Semua periode">Semua periode</option>
-                <option value="Aktif">Aktif</option>
-                <option value="Berakhir">Berakhir</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Tabel Utama */}
-          <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs md:text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-white text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    <th className="px-5 py-4 font-semibold">Nama dan Email</th>
-                    <th className="px-5 py-4 font-semibold">Kampus</th>
-                    <th className="px-5 py-4 font-semibold">Periode</th>
-                    <th className="px-5 py-4 font-semibold">Status Kerja</th>
-                    <th className="px-5 py-4 font-semibold">Status Periode</th>
-                    <th className="px-5 py-4 font-semibold text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {filteredInterns.map((intern) => (
-                    <tr key={intern.id} className="hover:bg-slate-50/80 transition">
-                      <td className="px-5 py-4">
-                        <p className="font-bold text-slate-900 leading-snug">{intern.nama}</p>
-                        <p className="text-[11px] text-slate-400 font-mono mt-0.5">{intern.email}</p>
-                      </td>
-                      <td className="px-5 py-4 text-slate-600 font-medium">
-                        {intern.kampus}
-                      </td>
-                      <td className="px-5 py-4 text-slate-600 whitespace-nowrap">
-                        {intern.periodeFormatted}
-                      </td>
-                      <td className="px-5 py-4 text-slate-700 font-medium">
-                        {intern.status_kerja}
-                      </td>
-                      <td className="px-5 py-4">
-                        <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                            intern.status_periode === 'Aktif'
-                              ? 'bg-[#e7f5ec] text-[#206941]'
-                              : 'bg-slate-100 text-slate-500'
-                          }`}
-                        >
-                          {intern.status_periode}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 text-right whitespace-nowrap font-medium">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedIntern(intern);
-                            setShowDetailModal(true);
-                          }}
-                          className="text-[#17362f] hover:text-[#285e51] hover:underline mr-4 transition"
-                        >
-                          Lihat Detail
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditModal(intern)}
-                          className="text-[#17362f] hover:text-[#285e51] hover:underline transition"
-                        >
-                          Ubah
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="px-5 py-3.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-              <span>Menampilkan {filteredInterns.length} peserta</span>
-              <span>1 dari 1 halaman</span>
-            </div>
-          </div>
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* 2. SKENARIO: AFTER F01 (PERSIS GAMBAR ATAS FIGMA)        */}
-      {/* ======================================================== */}
-      {activeScenario === 'after_f01' && (
-        <div className="space-y-6 animate-fadeIn">
-          {/* Eyebrow Label */}
-          <p className="text-[11px] font-bold tracking-wider text-[#245244] uppercase">
-            AFTER F01 / SKENARIO BARU SAJA — PESERTA AKTIF 2 → 3
+      {/* Header Halaman Sesuai Figma */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-[26px] font-bold text-slate-900 tracking-tight leading-tight">
+            Data Anak Magang
+          </h1>
+          <p className="text-xs md:text-sm text-slate-500 mt-0.5">
+            Data peserta, periode, dan status kerja.
           </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleOpenAddModal}
+          className="self-start sm:self-auto px-4 py-2.5 bg-[#17362f] hover:bg-[#122b25] active:scale-[0.99] text-white text-xs md:text-sm font-semibold rounded-lg flex items-center gap-2 shadow-xs transition"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Tambah Anak Magang</span>
+        </button>
+      </div>
 
-          {/* Banner Sukses Nabila */}
-          <div className="p-4 md:p-5 rounded-xl bg-[#eaf4ef] border border-[#a4d4bc] text-[#17362f]">
-            <h4 className="font-bold text-sm md:text-base text-[#17362f]">
-              {recentAddedIntern.nama} berhasil ditambahkan
-            </h4>
-            <p className="text-xs text-[#3b6357] mt-0.5">
-              Akun {recentAddedIntern.email} terhubung dengan peserta {recentAddedIntern.nama}.
-            </p>
-          </div>
+      {/* Filter Bar */}
+      <div className="bg-white rounded-xl border border-slate-200/90 p-3 shadow-2xs flex flex-col md:flex-row items-center gap-3">
+        <div className="relative flex-1 w-full">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Cari nama, kampus, atau email"
+            className="w-full px-4 py-2 rounded-lg border border-slate-200 bg-[#fbfcfc] text-xs md:text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#17362f] focus:border-[#17362f] transition placeholder:text-slate-400"
+          />
+        </div>
 
-          {/* Tabel Peserta Aktif 3 Orang */}
-          <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs md:text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-white text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    <th className="px-5 py-4 font-semibold">Nama dan email</th>
-                    <th className="px-5 py-4 font-semibold">Kampus</th>
-                    <th className="px-5 py-4 font-semibold">Periode</th>
-                    <th className="px-5 py-4 font-semibold">Status kerja</th>
-                    <th className="px-5 py-4 font-semibold">Status periode</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {/* Row 1: Raka */}
-                  <tr className="hover:bg-slate-50/70 transition">
-                    <td className="px-5 py-4 font-bold text-slate-900">
-                      Raka Aditya · <span className="font-normal font-mono text-slate-600">raka@metro.demo</span>
-                    </td>
-                    <td className="px-5 py-4 text-slate-600">Universitas Negeri Yogyakarta</td>
-                    <td className="px-5 py-4 text-slate-600">01 Agu–31 Des 2026</td>
-                    <td className="px-5 py-4 text-slate-700">On-site</td>
-                    <td className="px-5 py-4 italic text-[#245244] font-medium">Aktif</td>
-                  </tr>
+        <div className="w-full md:w-52">
+          <select
+            value={filterStatusKerja}
+            onChange={(e) => setFilterStatusKerja(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs md:text-sm text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#17362f] cursor-pointer"
+          >
+            <option value="Semua status kerja">Semua status kerja</option>
+            <option value="On-site">On-site</option>
+            <option value="Remote">Remote</option>
+          </select>
+        </div>
 
-                  {/* Row 2: Salsa */}
-                  <tr className="hover:bg-slate-50/70 transition">
-                    <td className="px-5 py-4 font-bold text-slate-900">
-                      Salsa Maharani · <span className="font-normal font-mono text-slate-600">salsa@metro.demo</span>
-                    </td>
-                    <td className="px-5 py-4 text-slate-600">Universitas Gadjah Mada</td>
-                    <td className="px-5 py-4 text-slate-600">15 Sep 2026–15 Jan 2027</td>
-                    <td className="px-5 py-4 text-slate-700">Remote</td>
-                    <td className="px-5 py-4 italic text-[#245244] font-medium">Aktif</td>
-                  </tr>
+        <div className="w-full md:w-48">
+          <select
+            value={filterPeriode}
+            onChange={(e) => setFilterPeriode(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs md:text-sm text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#17362f] cursor-pointer"
+          >
+            <option value="Semua periode">Semua periode</option>
+            <option value="Aktif">Aktif</option>
+            <option value="Berakhir">Berakhir</option>
+          </select>
+        </div>
+      </div>
 
-                  {/* Row 3: Nabila (Baru Ditambahkan) */}
-                  <tr className="hover:bg-slate-50/70 transition bg-[#f9fbfb]">
-                    <td className="px-5 py-4 font-bold text-slate-900">
-                      {recentAddedIntern.nama} · <span className="font-normal font-mono text-slate-600">{recentAddedIntern.email}</span>
-                    </td>
-                    <td className="px-5 py-4 text-slate-600">{recentAddedIntern.kampus}</td>
-                    <td className="px-5 py-4 text-slate-600">{recentAddedIntern.periodeFormatted}</td>
-                    <td className="px-5 py-4 text-slate-700">{recentAddedIntern.status_kerja}</td>
-                    <td className="px-5 py-4 italic text-[#245244] font-medium">Aktif</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+      {/* Tabel Data Anak Magang */}
+      <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs md:text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 bg-white text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                <th className="px-5 py-4 font-semibold">Nama dan Email</th>
+                <th className="px-5 py-4 font-semibold">Kampus</th>
+                <th className="px-5 py-4 font-semibold">Periode</th>
+                <th className="px-5 py-4 font-semibold">Status Kerja</th>
+                <th className="px-5 py-4 font-semibold">Status Periode</th>
+                <th className="px-5 py-4 font-semibold text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-700">
+              {filteredInterns.map((intern) => (
+                <tr key={intern.id} className="hover:bg-slate-50/80 transition">
+                  <td className="px-5 py-4">
+                    <p className="font-bold text-slate-900 leading-snug">
+                      {intern.nama} · <span className="font-normal font-mono text-slate-500">{intern.email}</span>
+                    </p>
+                  </td>
+                  <td className="px-5 py-4 text-slate-600 font-medium">
+                    {intern.kampus}
+                  </td>
+                  <td className="px-5 py-4 text-slate-600 whitespace-nowrap">
+                    {intern.periodeFormatted}
+                  </td>
+                  <td className="px-5 py-4 text-slate-700 font-medium">
+                    {intern.status_kerja}
+                  </td>
+                  <td className="px-5 py-4">
+                    <span
+                      className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                        intern.status_periode === 'Aktif'
+                          ? 'bg-[#e7f5ec] text-[#206941]'
+                          : 'bg-slate-100 text-slate-500'
+                      }`}
+                    >
+                      {intern.status_periode}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4 text-right whitespace-nowrap font-medium">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedIntern(intern);
+                        setShowDetailModal(true);
+                      }}
+                      className="text-[#17362f] hover:text-[#285e51] hover:underline mr-4 transition"
+                    >
+                      Lihat Detail
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditModal(intern)}
+                      className="text-[#17362f] hover:text-[#285e51] hover:underline transition"
+                    >
+                      Ubah
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-          {/* Tabel Akun Terhubung Sesuai Figma */}
+        <div className="px-5 py-3.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+          <span>Menampilkan {filteredInterns.length} peserta</span>
+          <span>1 dari 1 halaman</span>
+        </div>
+      </div>
+
+      {/* Tabel Akun Terhubung (Tampil jika baru saja menambah peserta sesuai Figma) */}
+      {lastAddedAccount && (
+        <div className="space-y-2 animate-fadeIn">
           <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs md:text-sm">
@@ -499,16 +397,16 @@ export const AdminInternsPage = () => {
                 <tbody className="text-slate-700">
                   <tr>
                     <td className="px-5 py-4 font-bold text-slate-900">
-                      {recentAddedIntern.nama}
+                      {lastAddedAccount.nama}
                     </td>
                     <td className="px-5 py-4 text-slate-600 font-mono">
-                      {recentAddedIntern.email}
+                      {lastAddedAccount.email}
                     </td>
                     <td className="px-5 py-4 text-slate-700 font-medium">
-                      Anak Magang
+                      {lastAddedAccount.role}
                     </td>
                     <td className="px-5 py-4 text-slate-700 font-medium">
-                      Aktif
+                      {lastAddedAccount.status}
                     </td>
                   </tr>
                 </tbody>
@@ -519,39 +417,7 @@ export const AdminInternsPage = () => {
       )}
 
       {/* ======================================================== */}
-      {/* 3. SKENARIO: AFTER F02 (PERSIS GAMBAR BAWAH FIGMA)       */}
-      {/* ======================================================== */}
-      {activeScenario === 'after_f02' && (
-        <div className="space-y-6 animate-fadeIn">
-          {/* Section Heading */}
-          <h2 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
-            AFTER F02 / peserta yang sama
-          </h2>
-
-          {/* Banner Sukses Raka */}
-          <div className="p-4 md:p-5 rounded-xl bg-[#eaf4ef] border border-[#a4d4bc] text-[#17362f]">
-            <h4 className="font-bold text-sm md:text-base text-[#17362f]">
-              Data {recentUpdatedIntern.nama} tersimpan
-            </h4>
-            <p className="text-xs text-[#3b6357] mt-0.5">
-              Perubahan diterapkan pada peserta yang sama. Akun {recentUpdatedIntern.email} tetap terhubung.
-            </p>
-          </div>
-
-          {/* Ringkasan Data Peserta Sesuai Figma */}
-          <div className="bg-white rounded-xl border border-slate-200/90 p-5 shadow-2xs space-y-1">
-            <h3 className="font-semibold text-slate-900 text-sm md:text-base">
-              {recentUpdatedIntern.nama} · {recentUpdatedIntern.kampus}
-            </h3>
-            <p className="text-xs text-slate-500">
-              {recentUpdatedIntern.periodeFormatted} · {recentUpdatedIntern.status_kerja} · {recentUpdatedIntern.status_periode}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ======================================================== */}
-      {/* MODAL TAMBAH ANAK MAGANG (F01)                          */}
+      {/* MODAL 1: Tambah Anak Magang (F01)                        */}
       {/* ======================================================== */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-2xs animate-fadeIn">
@@ -580,7 +446,7 @@ export const AdminInternsPage = () => {
                   value={formData.nama}
                   onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
                   placeholder="Nabila Putri"
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs md:text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#17362f]"
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs md:text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#17362f] focus:border-[#17362f]"
                 />
               </div>
 
@@ -594,7 +460,7 @@ export const AdminInternsPage = () => {
                   value={formData.kampus}
                   onChange={(e) => setFormData({ ...formData, kampus: e.target.value })}
                   placeholder="Universitas Negeri Yogyakarta"
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs md:text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#17362f]"
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs md:text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#17362f] focus:border-[#17362f]"
                 />
               </div>
 
@@ -614,7 +480,7 @@ export const AdminInternsPage = () => {
                   className={`w-full px-3.5 py-2.5 rounded-lg border text-xs md:text-sm text-slate-900 focus:outline-none ${
                     formErrors.email
                       ? 'border-rose-500 bg-rose-50/20'
-                      : 'border-slate-300 focus:ring-1 focus:ring-[#17362f]'
+                      : 'border-slate-300 focus:ring-1 focus:ring-[#17362f] focus:border-[#17362f]'
                   }`}
                 />
                 {formErrors.email && (
@@ -728,7 +594,7 @@ export const AdminInternsPage = () => {
       )}
 
       {/* ======================================================== */}
-      {/* MODAL UBAH ANAK MAGANG (F02)                            */}
+      {/* MODAL 2: Ubah Data Anak Magang (F02)                     */}
       {/* ======================================================== */}
       {showEditModal && selectedIntern && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-2xs animate-fadeIn">
@@ -897,6 +763,77 @@ export const AdminInternsPage = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL 3: Detail Anak Magang                             */}
+      {/* ======================================================== */}
+      {showDetailModal && selectedIntern && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-2xs animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 md:p-7 shadow-2xl relative border border-slate-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div>
+                <span className="text-[10px] font-bold text-[#17362f] uppercase tracking-wider">
+                  Detail Peserta
+                </span>
+                <h3 className="text-lg font-bold text-slate-900 leading-tight">
+                  {selectedIntern.nama}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDetailModal(false)}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-slate-600">
+              <div className="flex justify-between py-1.5 border-b border-slate-50">
+                <span className="text-slate-400">Email Akun:</span>
+                <span className="font-semibold text-slate-800 font-mono">{selectedIntern.email}</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-50">
+                <span className="text-slate-400">Asal Kampus:</span>
+                <span className="font-semibold text-slate-800">{selectedIntern.kampus}</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-50">
+                <span className="text-slate-400">Periode Magang:</span>
+                <span className="font-semibold text-slate-800">{selectedIntern.periodeFormatted}</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-50">
+                <span className="text-slate-400">Status Penempatan:</span>
+                <span className="font-semibold text-slate-800">{selectedIntern.status_kerja}</span>
+              </div>
+              <div className="flex justify-between py-1.5">
+                <span className="text-slate-400">Status Periode:</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                    selectedIntern.status_periode === 'Aktif'
+                      ? 'bg-[#e7f5ec] text-[#206941]'
+                      : 'bg-slate-100 text-slate-500'
+                  }`}
+                >
+                  {selectedIntern.status_periode}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-slate-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDetailModal(false);
+                  handleOpenEditModal(selectedIntern);
+                }}
+                className="px-4 py-2 bg-[#17362f] text-white text-xs font-semibold rounded-lg hover:bg-[#122b25] transition"
+              >
+                Ubah Data Ini
+              </button>
+            </div>
           </div>
         </div>
       )}
