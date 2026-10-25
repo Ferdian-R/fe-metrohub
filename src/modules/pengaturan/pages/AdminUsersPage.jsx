@@ -3,11 +3,9 @@ import { useToast } from '../../../context/ToastContext';
 import {
   Plus,
   ChevronDown,
+  ChevronRight,
   X,
   ShieldCheck,
-  CheckCircle2,
-  Lock,
-  UserCheck,
 } from 'lucide-react';
 
 const INITIAL_USERS = [
@@ -41,6 +39,23 @@ export const AdminUsersPage = () => {
   const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState('pengguna');
+  const [selectedRoleDetail, setSelectedRoleDetail] = useState('Admin'); // 'Admin' | 'Anak Magang'
+  const [adminPermissions, setAdminPermissions] = useState({
+    dashboard: true,
+    dataMagang: true,
+    absensiLogbook: true,
+    penugasan: true,
+    keuangan: true,
+    penggunaRole: true,
+    lokasiKantor: true,
+  });
+
+  const handleSaveRolePermissions = () => {
+    showToast({
+      title: 'Perubahan hak akses disimpan',
+      message: 'Kebijakan hak akses role ' + selectedRoleDetail + ' berhasil diperbarui.',
+    });
+  };
 
   const [users, setUsers] = useState(() => {
     try {
@@ -200,30 +215,34 @@ export const AdminUsersPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight font-lexend">
-            Pengguna dan Role
+            {activeTab === 'pengguna' ? 'Pengguna dan Role' : 'Role dan Hak Akses'}
           </h1>
           <p className="text-xs md:text-sm text-slate-500 mt-1 font-source-sans">
-            Kelola akun, role, dan status akses.
+            {activeTab === 'pengguna'
+              ? 'Kelola akun, role, dan status akses.'
+              : 'Hak akses Admin dan Anak Magang.'}
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            setAddForm({
-              name: 'Dewi Lestari',
-              email: 'dewi@metro.demo',
-              role: 'Admin',
-              status: 'Aktif',
-            });
-            setAddEmailError('');
-            setIsAddModalOpen(true);
-          }}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#17362f] hover:bg-[#122b25] active:scale-[0.99] text-white text-xs md:text-sm font-semibold rounded-xl shadow-xs transition cursor-pointer self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Tambah Pengguna</span>
-        </button>
+        {activeTab === 'pengguna' && (
+          <button
+            type="button"
+            onClick={() => {
+              setAddForm({
+                name: 'Dewi Lestari',
+                email: 'dewi@metro.demo',
+                role: 'Admin',
+                status: 'Aktif',
+              });
+              setAddEmailError('');
+              setIsAddModalOpen(true);
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#17362f] hover:bg-[#122b25] active:scale-[0.99] text-white text-xs md:text-sm font-semibold rounded-xl shadow-xs transition cursor-pointer self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Tambah Pengguna</span>
+          </button>
+        )}
       </div>
 
       {/* Tabs Navigasi: Pengguna | Role dan Hak Akses */}
@@ -407,68 +426,279 @@ export const AdminUsersPage = () => {
           </div>
         </>
       ) : (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs space-y-4">
-              <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-                <div className="w-10 h-10 rounded-xl bg-[#e7f5ec] text-[#176a43] flex items-center justify-center font-bold">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 font-lexend">Admin</h3>
-                  <p className="text-xs text-slate-500 font-source-sans">Akses penuh operasional internal</p>
-                </div>
-              </div>
+        /* Tab 2: Role dan Hak Akses (Figma A-11) */
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start font-sans">
+          {/* Kolom Kiri: Pilih role (3 kolom) */}
+          <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200 p-5 shadow-2xs space-y-3">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-source-sans">
+              Pilih role
+            </h3>
 
-              <div className="space-y-2.5 text-xs text-slate-600 font-source-sans">
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-[#176a43] shrink-0 mt-0.5" />
-                  <span><strong>Manajemen Magang:</strong> Data peserta, monitor absensi, tinjau logbook, dan buat penugasan tugas.</span>
+            <div className="space-y-2">
+              {/* Item Admin */}
+              <button
+                type="button"
+                onClick={() => setSelectedRoleDetail('Admin')}
+                className={'w-full text-left p-3.5 rounded-xl border transition flex items-center justify-between cursor-pointer ' +
+                  (selectedRoleDetail === 'Admin'
+                    ? 'bg-[#edf6f1] border-[#cde6d7]'
+                    : 'bg-white border-transparent hover:bg-slate-50')}
+              >
+                <div>
+                  <p className={'text-sm font-bold ' + (selectedRoleDetail === 'Admin' ? 'text-[#17362f]' : 'text-slate-800')}>
+                    Admin
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Pengelola operasional
+                  </p>
                 </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-[#176a43] shrink-0 mt-0.5" />
-                  <span><strong>Manajemen Keuangan:</strong> Pencatatan transaksi pemasukan/pengeluaran, kategori anggaran, dan ringkasan keuangan.</span>
+                <ChevronRight className={'w-4 h-4 ' + (selectedRoleDetail === 'Admin' ? 'text-[#17362f]' : 'text-slate-400')} />
+              </button>
+
+              {/* Item Anak Magang */}
+              <button
+                type="button"
+                onClick={() => setSelectedRoleDetail('Anak Magang')}
+                className={'w-full text-left p-3.5 rounded-xl border transition flex items-center justify-between cursor-pointer ' +
+                  (selectedRoleDetail === 'Anak Magang'
+                    ? 'bg-[#edf6f1] border-[#cde6d7]'
+                    : 'bg-white border-transparent hover:bg-slate-50')}
+              >
+                <div>
+                  <p className={'text-sm font-bold ' + (selectedRoleDetail === 'Anak Magang' ? 'text-[#17362f]' : 'text-slate-800')}>
+                    Anak Magang
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Akses data pribadi
+                  </p>
                 </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-[#176a43] shrink-0 mt-0.5" />
-                  <span><strong>Pengaturan Sistem:</strong> Kelola akun pengguna, status akses (aktif/nonaktif), dan koordinat radius kantor.</span>
-                </div>
-              </div>
+                <ChevronRight className={'w-4 h-4 ' + (selectedRoleDetail === 'Anak Magang' ? 'text-[#17362f]' : 'text-slate-400')} />
+              </button>
+            </div>
+          </div>
+
+          {/* Kolom Kanan: Detail Hak Akses Role (8 kolom) */}
+          <div className="lg:col-span-8 bg-white rounded-xl border border-slate-200 p-6 md:p-8 shadow-2xs space-y-6">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 font-lexend">
+                {selectedRoleDetail === 'Admin' ? 'Hak akses Admin' : 'Hak akses Anak Magang'}
+              </h2>
+              <p className="text-xs text-slate-500 mt-1 font-source-sans">
+                {selectedRoleDetail === 'Admin'
+                  ? 'Admin mengelola seluruh modul operasional.'
+                  : 'Anak Magang hanya dapat mengakses modul mandiri pribadi.'}
+              </p>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs space-y-4">
-              <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
-                  <UserCheck className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 font-lexend">Anak Magang</h3>
-                  <p className="text-xs text-slate-500 font-source-sans">Akses mandiri aktivitas magang pribadi</p>
-                </div>
-              </div>
+            {/* List Modul & Switch Toggles */}
+            <div className="divide-y divide-slate-100 font-source-sans">
+              {selectedRoleDetail === 'Admin' ? (
+                <>
+                  {/* Dashboard */}
+                  <div className="py-4 first:pt-0 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Dashboard</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Menu tersedia dan akses diizinkan</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAdminPermissions({ ...adminPermissions, dashboard: !adminPermissions.dashboard })}
+                      className={'w-11 h-6 flex items-center rounded-full p-1 transition cursor-pointer ' +
+                        (adminPermissions.dashboard ? 'bg-[#17362f]' : 'bg-slate-200')}
+                    >
+                      <div className={'bg-white w-4 h-4 rounded-full shadow-md transform transition ' +
+                        (adminPermissions.dashboard ? 'translate-x-5' : '')} />
+                    </button>
+                  </div>
 
-              <div className="space-y-2.5 text-xs text-slate-600 font-source-sans">
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                  <span><strong>Dashboard Mandiri:</strong> Pantau sisa hari magang dan tenggat tugas terdekat.</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                  <span><strong>Absensi & Lokasi:</strong> Check-in dan check-out dengan foto selfie dan verifikasi koordinat kantor.</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                  <span><strong>Logbook & Tugas:</strong> Catat progres kerja harian dan perbarui status tugas yang ditugaskan.</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Lock className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                  <span className="text-slate-400">Tidak memiliki akses ke manajemen keuangan atau data peserta lain.</span>
-                </div>
-              </div>
+                  {/* Data Anak Magang */}
+                  <div className="py-4 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Data Anak Magang</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Menu tersedia dan akses diizinkan</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAdminPermissions({ ...adminPermissions, dataMagang: !adminPermissions.dataMagang })}
+                      className={'w-11 h-6 flex items-center rounded-full p-1 transition cursor-pointer ' +
+                        (adminPermissions.dataMagang ? 'bg-[#17362f]' : 'bg-slate-200')}
+                    >
+                      <div className={'bg-white w-4 h-4 rounded-full shadow-md transform transition ' +
+                        (adminPermissions.dataMagang ? 'translate-x-5' : '')} />
+                    </button>
+                  </div>
+
+                  {/* Absensi dan Logbook */}
+                  <div className="py-4 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Absensi dan Logbook</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Menu tersedia dan akses diizinkan</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAdminPermissions({ ...adminPermissions, absensiLogbook: !adminPermissions.absensiLogbook })}
+                      className={'w-11 h-6 flex items-center rounded-full p-1 transition cursor-pointer ' +
+                        (adminPermissions.absensiLogbook ? 'bg-[#17362f]' : 'bg-slate-200')}
+                    >
+                      <div className={'bg-white w-4 h-4 rounded-full shadow-md transform transition ' +
+                        (adminPermissions.absensiLogbook ? 'translate-x-5' : '')} />
+                    </button>
+                  </div>
+
+                  {/* Penugasan */}
+                  <div className="py-4 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Penugasan</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Menu tersedia dan akses diizinkan</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAdminPermissions({ ...adminPermissions, penugasan: !adminPermissions.penugasan })}
+                      className={'w-11 h-6 flex items-center rounded-full p-1 transition cursor-pointer ' +
+                        (adminPermissions.penugasan ? 'bg-[#17362f]' : 'bg-slate-200')}
+                    >
+                      <div className={'bg-white w-4 h-4 rounded-full shadow-md transform transition ' +
+                        (adminPermissions.penugasan ? 'translate-x-5' : '')} />
+                    </button>
+                  </div>
+
+                  {/* Manajemen Keuangan */}
+                  <div className="py-4 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Manajemen Keuangan</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Menu tersedia dan akses diizinkan</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAdminPermissions({ ...adminPermissions, keuangan: !adminPermissions.keuangan })}
+                      className={'w-11 h-6 flex items-center rounded-full p-1 transition cursor-pointer ' +
+                        (adminPermissions.keuangan ? 'bg-[#17362f]' : 'bg-slate-200')}
+                    >
+                      <div className={'bg-white w-4 h-4 rounded-full shadow-md transform transition ' +
+                        (adminPermissions.keuangan ? 'translate-x-5' : '')} />
+                    </button>
+                  </div>
+
+                  {/* Pengguna dan Role */}
+                  <div className="py-4 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Pengguna dan Role</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Menu tersedia dan akses diizinkan</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAdminPermissions({ ...adminPermissions, penggunaRole: !adminPermissions.penggunaRole })}
+                      className={'w-11 h-6 flex items-center rounded-full p-1 transition cursor-pointer ' +
+                        (adminPermissions.penggunaRole ? 'bg-[#17362f]' : 'bg-slate-200')}
+                    >
+                      <div className={'bg-white w-4 h-4 rounded-full shadow-md transform transition ' +
+                        (adminPermissions.penggunaRole ? 'translate-x-5' : '')} />
+                    </button>
+                  </div>
+
+                  {/* Lokasi Kantor */}
+                  <div className="py-4 last:pb-0 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Lokasi Kantor</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Menu tersedia dan akses diizinkan</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAdminPermissions({ ...adminPermissions, lokasiKantor: !adminPermissions.lokasiKantor })}
+                      className={'w-11 h-6 flex items-center rounded-full p-1 transition cursor-pointer ' +
+                        (adminPermissions.lokasiKantor ? 'bg-[#17362f]' : 'bg-slate-200')}
+                    >
+                      <div className={'bg-white w-4 h-4 rounded-full shadow-md transform transition ' +
+                        (adminPermissions.lokasiKantor ? 'translate-x-5' : '')} />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Anak Magang Modules */}
+                  <div className="py-4 first:pt-0 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Dashboard Saya</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Menu tersedia dan akses diizinkan</p>
+                    </div>
+                    <div className="w-11 h-6 flex items-center rounded-full p-1 bg-[#17362f]">
+                      <div className="bg-white w-4 h-4 rounded-full shadow-md transform translate-x-5" />
+                    </div>
+                  </div>
+
+                  <div className="py-4 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Absensi & Lokasi</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Check-in dan check-out mandiri</p>
+                    </div>
+                    <div className="w-11 h-6 flex items-center rounded-full p-1 bg-[#17362f]">
+                      <div className="bg-white w-4 h-4 rounded-full shadow-md transform translate-x-5" />
+                    </div>
+                  </div>
+
+                  <div className="py-4 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Logbook Harian</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Catatan pekerjaan pribadi</p>
+                    </div>
+                    <div className="w-11 h-6 flex items-center rounded-full p-1 bg-[#17362f]">
+                      <div className="bg-white w-4 h-4 rounded-full shadow-md transform translate-x-5" />
+                    </div>
+                  </div>
+
+                  <div className="py-4 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Tugas Saya</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Daftar penugasan magang</p>
+                    </div>
+                    <div className="w-11 h-6 flex items-center rounded-full p-1 bg-[#17362f]">
+                      <div className="bg-white w-4 h-4 rounded-full shadow-md transform translate-x-5" />
+                    </div>
+                  </div>
+
+                  <div className="py-4 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Profil</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Informasi akun dan masa magang</p>
+                    </div>
+                    <div className="w-11 h-6 flex items-center rounded-full p-1 bg-[#17362f]">
+                      <div className="bg-white w-4 h-4 rounded-full shadow-md transform translate-x-5" />
+                    </div>
+                  </div>
+
+                  <div className="py-4 last:pb-0 flex items-center justify-between gap-4 opacity-50">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Manajemen Keuangan & Operasional</p>
+                      <p className="text-[11px] text-rose-500 mt-0.5">Tidak diizinkan untuk peran Anak Magang</p>
+                    </div>
+                    <div className="w-11 h-6 flex items-center rounded-full p-1 bg-slate-200">
+                      <div className="bg-white w-4 h-4 rounded-full shadow-md" />
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Kebijakan Akses Box */}
+            <div className="bg-[#edf6f1] border border-[#cde6d7] rounded-xl p-3.5 flex items-center gap-2.5 text-xs text-slate-700 font-source-sans">
+              <ShieldCheck className="w-4 h-4 text-[#176a43] shrink-0" />
+              <span>Keuangan hanya untuk Admin. Hak akses terkunci mengikuti kebijakan.</span>
+            </div>
+
+            {/* Tombol Simpan Perubahan */}
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleSaveRolePermissions}
+                className="px-5 py-2.5 bg-[#17362f] hover:bg-[#122b25] active:scale-[0.99] text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer"
+              >
+                Simpan Perubahan
+              </button>
             </div>
           </div>
         </div>
       )}
+
       {/* Modal 1: Tambah Pengguna (F18) */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-2xs p-4">
