@@ -56,7 +56,7 @@ export const DashboardLayout = () => {
     {
       header: 'PENGATURAN',
       items: [
-        { name: 'Pengguna dan Role', path: '/admin/pengaturan/pengguna', icon: Shield },
+        { name: 'Pengguna dan Role', path: '/admin/pengaturan/pengguna', icon: ShieldCheck },
         { name: 'Lokasi Kantor', path: '/admin/pengaturan/lokasi', icon: MapPin },
       ],
     },
