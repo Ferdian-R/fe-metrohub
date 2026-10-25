@@ -81,15 +81,15 @@ export const DashboardLayout = () => {
         </button>
       </div>
 
-      {/* Sidebar - Matching Figma Deep Forest Green #17362f */}
+      {/* Sidebar: Fixed & Height Pas Layar (h-screen, sticky top-0 di desktop) */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#17362f] text-[#a4c2b8] flex flex-col justify-between transition-transform duration-200 md:static md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 h-screen bg-[#17362f] text-[#a4c2b8] flex flex-col justify-between transition-transform duration-200 shrink-0 md:sticky md:top-0 md:translate-x-0 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="flex flex-col flex-1 overflow-y-auto">
           {/* Logo Brand Header */}
-          <div className="p-5 flex items-center gap-3">
+          <div className="p-5 flex items-center gap-3 shrink-0">
             <div className="w-8 h-8 rounded-lg border border-[#375e53] bg-[#1d433b] flex items-center justify-center font-bold text-sm text-white shadow-xs">
               M
             </div>
@@ -99,7 +99,7 @@ export const DashboardLayout = () => {
           </div>
 
           {/* Navigation Links */}
-          <nav className="px-3 py-2 space-y-4">
+          <nav className="px-3 py-2 space-y-4 flex-1">
             {navGroups.map((group, idx) => (
               <div key={idx} className="space-y-1">
                 {group.header && (
@@ -132,7 +132,7 @@ export const DashboardLayout = () => {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-4 mx-3 mb-4 rounded-xl border border-[#2b5349] bg-[#15322b]">
+        <div className="p-4 mx-3 mb-4 rounded-xl border border-[#2b5349] bg-[#15322b] shrink-0">
           <p className="text-xs font-semibold text-white">Ruang kerja Admin</p>
           <p className="text-[11px] text-[#71988b]">Demo · data contoh</p>
         </div>
@@ -146,10 +146,10 @@ export const DashboardLayout = () => {
         />
       )}
 
-      {/* Main Content Area */}
+      {/* Main Content Area: Hanya bagian ini yang scroll */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Header matching Figma */}
-        <header className="h-14 bg-white border-b border-[#e2e7e4] px-6 md:px-8 flex items-center justify-between sticky top-0 z-30">
+        {/* Top Header Sticky */}
+        <header className="h-14 bg-white/95 backdrop-blur-xs border-b border-[#e2e7e4] px-6 md:px-8 flex items-center justify-between sticky top-0 z-30 shrink-0">
           <div className="text-xs text-slate-500 font-medium">
             Operasional internal <span className="font-semibold text-slate-700">20 Oktober 2026</span>
           </div>
