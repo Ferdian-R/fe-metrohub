@@ -14,6 +14,7 @@ import { InternAttendancePage } from './modules/magang/pages/InternAttendancePag
 import { InternLogbookPage } from './modules/magang/pages/InternLogbookPage';
 import { InternTasksPage } from './modules/magang/pages/InternTasksPage';
 import { InternProfilePage } from './modules/magang/pages/InternProfilePage';
+import { AdminUsersPage } from './modules/pengaturan/pages/AdminUsersPage';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -67,6 +68,7 @@ export default function App() {
               <Route path="admin/magang/absensi" element={<AdminAttendancePage />} />
               <Route path="admin/magang/logbook" element={<AdminLogbookPage />} />
               <Route path="admin/magang/penugasan" element={<AdminTasksPage />} />
+              <Route path="admin/pengaturan/pengguna" element={<AdminUsersPage />} />
 
               {/* Portal Anak Magang Routes (M-01) */}
               <Route path="magang/dashboard" element={<InternDashboardPage />} />
