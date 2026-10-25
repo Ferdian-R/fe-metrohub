@@ -10,7 +10,7 @@ import {
   FileText,
   Tag,
   BarChart2,
-  Shield,
+  ShieldCheck,
   MapPin,
   ChevronDown,
   Menu,
