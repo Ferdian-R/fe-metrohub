@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   ShieldCheck,
-  ChevronDown,
   User,
   ArrowRight,
 } from 'lucide-react';
@@ -30,32 +29,6 @@ export const InternAttendancePage = () => {
     logbookTime: 'Tersimpan · 12.30 WIB',
     checkOutTime: 'Belum dilakukan',
   });
-
-  const handleScenarioChange = (e) => {
-    const val = e.target.value;
-    setSelectedScenario(val);
-    if (val === 'normal') {
-      setHasPhoto(true);
-      setHasLocation(true);
-      setAttendanceRecord((prev) => ({ ...prev, statusKerja: 'On-site' }));
-    } else if (val === 'incomplete') {
-      setHasPhoto(false);
-      setHasLocation(false);
-    } else if (val === 'out_of_radius') {
-      setHasPhoto(true);
-      setHasLocation(true);
-      setAttendanceRecord((prev) => ({ ...prev, statusKerja: 'On-site' }));
-    } else if (val === 'remote_ready') {
-      setHasPhoto(true);
-      setHasLocation(true);
-      setAttendanceRecord((prev) => ({ ...prev, statusKerja: 'Remote' }));
-    } else if (val === 'remote_no_coords') {
-      setHasPhoto(true);
-      setHasLocation(false);
-      setAttendanceRecord((prev) => ({ ...prev, statusKerja: 'Remote' }));
-    }
-  };
-
   const handleTakePhoto = () => {
     setIsCapturingPhoto(true);
     setTimeout(() => {
@@ -103,80 +76,18 @@ export const InternAttendancePage = () => {
       message: 'Absensi hari ini lengkap dan telah tervalidasi.',
     });
   };
-
-  const handleResetFlow = (targetState) => {
-    if (targetState === 'checkin_ready') {
-      setFlowState('checkin_ready');
-      setAttendanceRecord({
-        statusKerja: 'On-site',
-        checkInTime: 'Belum dilakukan',
-        logbookTime: 'Belum disimpan',
-        checkOutTime: 'Belum dilakukan',
-      });
-    } else if (targetState === 'checkout_ready') {
-      setFlowState('checkout_ready');
-      setAttendanceRecord({
-        statusKerja: 'On-site',
-        checkInTime: '08.12 WIB',
-        logbookTime: 'Tersimpan · 12.30 WIB',
-        checkOutTime: 'Belum dilakukan',
-      });
-    }
-    setHasPhoto(true);
-    setHasLocation(true);
-    setSelectedScenario('normal');
-  };
-
-  const isBlockedByScenario =
-    selectedScenario === 'incomplete' ||
-    selectedScenario === 'out_of_radius' ||
-    selectedScenario === 'camera_denied' ||
-    selectedScenario === 'location_denied' ||
-    selectedScenario === 'location_timeout' ||
-    selectedScenario === 'remote_no_coords' ||
-    selectedScenario === 'internship_ended' ||
-    selectedScenario === 'storage_unknown' ||
-    !hasPhoto ||
-    !hasLocation;
+  const isBlockedByScenario = !hasPhoto || !hasLocation;
 
   return (
     <div className="space-y-6 w-full pb-12 font-sans">
-      {/* Header Halaman & Dropdown Alat Demo Skenario */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight font-lexend">
-            Absensi
-          </h1>
-          <p className="text-xs md:text-sm text-slate-500 mt-1 font-source-sans">
-            Selasa, 20 Oktober 2026 · {attendanceRecord.statusKerja}
-          </p>
-        </div>
-
-        {/* Alat Demo Skenario (Sesuai Figma M-02 Top-Right) */}
-        <div className="flex items-center gap-2 self-start md:self-auto">
-          <label className="text-xs font-medium text-slate-500 font-source-sans whitespace-nowrap">
-            Alat demo skenario
-          </label>
-          <div className="relative">
-            <select
-              value={selectedScenario}
-              onChange={handleScenarioChange}
-              className="appearance-none bg-white border border-slate-300 hover:border-slate-400 text-xs font-semibold text-slate-800 py-2 pl-3.5 pr-8 rounded-xl shadow-2xs focus:outline-none focus:ring-1 focus:ring-[#17362f] cursor-pointer"
-            >
-              <option value="normal">Dalam radius · normal</option>
-              <option value="incomplete">Foto dan lokasi belum lengkap</option>
-              <option value="out_of_radius">Di luar radius kantor (245 m)</option>
-              <option value="camera_denied">Izin kamera ditolak</option>
-              <option value="location_denied">Izin lokasi ditolak</option>
-              <option value="location_timeout">Lokasi belum ditemukan</option>
-              <option value="remote_no_coords">Remote · koordinat tetap diperlukan</option>
-              <option value="remote_ready">Remote · koordinat siap</option>
-              <option value="internship_ended">Masa magang telah berakhir</option>
-              <option value="storage_unknown">Status penyimpanan belum diketahui</option>
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
-        </div>
+      {/* Header Halaman */}
+      <div>
+        <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight font-lexend">
+          Absensi
+        </h1>
+        <p className="text-xs md:text-sm text-slate-500 mt-1 font-source-sans">
+          Selasa, 20 Oktober 2026 · {attendanceRecord.statusKerja}
+        </p>
       </div>
 
       {/* Grid Utama: Form Absensi (Kiri 2 Kolom) & Status Hari Ini (Kanan 1 Kolom) */}
@@ -494,57 +405,7 @@ export const InternAttendancePage = () => {
             </div>
           )}
 
-          {/* Shortcut Bar Cepat */}
-          <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
-            <span className="text-slate-400 font-medium">Uji alur cepat:</span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleResetFlow('checkin_ready')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer ${
-                  flowState === 'checkin_ready'
-                    ? 'bg-[#17362f] text-white'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                1. Check-in Siap
-              </button>
-              <button
-                type="button"
-                onClick={() => setFlowState('checkin_done')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer ${
-                  flowState === 'checkin_done'
-                    ? 'bg-[#17362f] text-white'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                2. Menunggu Logbook
-              </button>
-              <button
-                type="button"
-                onClick={() => handleResetFlow('checkout_ready')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer ${
-                  flowState === 'checkout_ready'
-                    ? 'bg-[#17362f] text-white'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                3. Check-out Siap
-              </button>
-              <button
-                type="button"
-                onClick={() => setFlowState('completed')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer ${
-                  flowState === 'completed'
-                    ? 'bg-[#17362f] text-white'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                4. Lengkap
-              </button>
-            </div>
           </div>
-        </div>
 
         {/* Kolom Kanan: Card Status Hari Ini */}
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs space-y-6">

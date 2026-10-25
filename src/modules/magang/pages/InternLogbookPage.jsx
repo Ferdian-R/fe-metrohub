@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Lock,
-  ChevronDown,
   ArrowRight,
   ShieldCheck,
 } from 'lucide-react';
@@ -29,21 +28,6 @@ export const InternLogbookPage = () => {
   const [validationError, setValidationError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [savedTime, setSavedTime] = useState('12.30 WIB');
-
-  // Handler Perubahan Skenario
-  const handleScenarioChange = (e) => {
-    const val = e.target.value;
-    setLogbookState(val);
-    setValidationError('');
-
-    if (val === 'draft') {
-      setSavedTime('');
-    } else if (val === 'saved') {
-      setSavedTime('12.30 WIB');
-    } else if (val === 'locked') {
-      setSavedTime('12.30 WIB');
-    }
-  };
 
   // Handler Simpan Logbook dengan Validasi (MG04 & Validasi spasi)
   const handleSaveLogbook = () => {
@@ -102,36 +86,14 @@ export const InternLogbookPage = () => {
 
   return (
     <div className="space-y-6 w-full pb-12 font-sans">
-      {/* Header Halaman & Dropdown Alat Demo Skenario */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight font-lexend">
-            Logbook
-          </h1>
-          <p className="text-xs md:text-sm text-slate-500 mt-1 font-source-sans">
-            Catatan pekerjaan pribadi selama masa magang.
-          </p>
-        </div>
-
-        {/* Alat Demo Skenario M-03 */}
-        <div className="flex items-center gap-2 self-start md:self-auto">
-          <label className="text-xs font-medium text-slate-500 font-source-sans whitespace-nowrap">
-            Alat demo skenario
-          </label>
-          <div className="relative">
-            <select
-              value={logbookState}
-              onChange={handleScenarioChange}
-              className="appearance-none bg-white border border-slate-300 hover:border-slate-400 text-xs font-semibold text-slate-800 py-2 pl-3.5 pr-8 rounded-xl shadow-2xs focus:outline-none focus:ring-1 focus:ring-[#17362f] cursor-pointer"
-            >
-              <option value="saved">Tersimpan · 12.30 WIB (Normal)</option>
-              <option value="draft">Draf belum disimpan (08.12 WIB)</option>
-              <option value="locked">Terkunci setelah check-out (17.05 WIB)</option>
-              <option value="error_network">Gagal simpan / koneksi terputus</option>
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
-        </div>
+      {/* Header Halaman */}
+      <div>
+        <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight font-lexend">
+          Logbook
+        </h1>
+        <p className="text-xs md:text-sm text-slate-500 mt-1 font-source-sans">
+          Catatan pekerjaan pribadi selama masa magang.
+        </p>
       </div>
 
       {/* Grid Konten: Editor Logbook (Kiri 2 Kolom) & Riwayat + Status (Kanan 1 Kolom) */}
@@ -277,68 +239,6 @@ export const InternLogbookPage = () => {
                 )}
               </>
             )}
-          </div>
-
-          {/* Quick Switch Helper Bar */}
-          <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
-            <span className="text-slate-400 font-medium">Uji state cepat:</span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setLogbookState('draft');
-                  setValidationError('');
-                }}
-                className={
-                  'px-2.5 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer ' +
-                  (logbookState === 'draft'
-                    ? 'bg-[#17362f] text-white'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200')
-                }
-              >
-                Draf Belum Simpan
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setLogbookState('saved');
-                  setValidationError('');
-                }}
-                className={
-                  'px-2.5 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer ' +
-                  (logbookState === 'saved'
-                    ? 'bg-[#17362f] text-white'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200')
-                }
-              >
-                Tersimpan (Normal)
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setLogbookState('locked');
-                  setValidationError('');
-                }}
-                className={
-                  'px-2.5 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer ' +
-                  (logbookState === 'locked'
-                    ? 'bg-[#17362f] text-white'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200')
-                }
-              >
-                Terkunci (Check-out)
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsiPekerjaan('   ');
-                  handleSaveLogbook();
-                }}
-                className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-700 hover:bg-rose-100 transition cursor-pointer"
-              >
-                Tes Spasi Kosong
-              </button>
-            </div>
           </div>
         </div>
 
