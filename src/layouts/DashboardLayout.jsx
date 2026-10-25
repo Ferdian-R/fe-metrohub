@@ -1,155 +1,199 @@
 ﻿import React, { useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
-  LayoutDashboard,
-  CalendarCheck2,
-  BookOpenCheck,
-  CheckSquare,
+  LayoutGrid,
   Users,
-  ClipboardList,
-  LogOut,
+  Clock,
+  BookOpen,
+  CheckSquare,
+  FileText,
+  Tag,
+  BarChart2,
+  Shield,
+  MapPin,
+  ChevronDown,
   Menu,
   X,
-  Building2,
-  ShieldAlert,
+  LogOut,
 } from 'lucide-react';
 
 export const DashboardLayout = () => {
-  const { user, logout, hasPermission } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
-  const isAdmin = hasPermission('magang:kelola') || user?.role === 'Admin';
-  const isIntern = hasPermission('magang:absen');
-
-  const navItems = [
-    // Magang items (Intern Role)
-    ...(isIntern
-      ? [
-          { name: 'Dashboard Saya', path: '/dashboard', icon: LayoutDashboard },
-          { name: 'Absensi & Logbook', path: '/absensi', icon: CalendarCheck2 },
-          { name: 'Tugas Saya', path: '/tugas', icon: CheckSquare },
-        ]
-      : []),
-    // Admin items
-    ...(isAdmin
-      ? [
-          { name: 'Dashboard Admin', path: '/admin/dashboard', icon: LayoutDashboard },
-          { name: 'Data Anak Magang', path: '/admin/magang/interns', icon: Users },
-          { name: 'Rekap Absensi & Logbook', path: '/admin/magang/absensi', icon: ClipboardList },
-        ]
-      : []),
+  const navGroups = [
+    {
+      items: [
+        { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutGrid },
+      ],
+    },
+    {
+      header: 'MANAJEMEN MAGANG',
+      items: [
+        { name: 'Data Anak Magang', path: '/admin/magang/interns', icon: Users },
+        { name: 'Absensi', path: '/admin/magang/absensi', icon: Clock },
+        { name: 'Logbook', path: '/admin/magang/logbook', icon: BookOpen },
+        { name: 'Penugasan', path: '/admin/magang/penugasan', icon: CheckSquare },
+      ],
+    },
+    {
+      header: 'MANAJEMEN KEUANGAN',
+      items: [
+        { name: 'Transaksi', path: '/admin/keuangan/transaksi', icon: FileText },
+        { name: 'Kategori', path: '/admin/keuangan/kategori', icon: Tag },
+        { name: 'Ringkasan Keuangan', path: '/admin/keuangan/ringkasan', icon: BarChart2 },
+      ],
+    },
+    {
+      header: 'PENGATURAN',
+      items: [
+        { name: 'Pengguna dan Role', path: '/admin/pengaturan/pengguna', icon: Shield },
+        { name: 'Lokasi Kantor', path: '/admin/pengaturan/lokasi', icon: MapPin },
+      ],
+    },
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
-      {/* Mobile Topbar */}
-      <div className="md:hidden flex items-center justify-between bg-slate-900 text-white px-4 py-3 sticky top-0 z-40 shadow-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white shadow">
+    <div className="min-h-screen bg-[#f4f6f5] flex flex-col md:flex-row font-sans text-slate-800">
+      {/* Mobile Top Bar */}
+      <div className="md:hidden bg-[#17362f] text-white px-4 py-3 flex items-center justify-between sticky top-0 z-40 shadow-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg border border-[#3b5f56] bg-[#1d433b] flex items-center justify-center font-bold text-xs text-white">
             M
           </div>
-          <div>
-            <h1 className="font-semibold text-sm tracking-tight leading-none">MetroHub</h1>
-            <p className="text-[10px] text-slate-400">Modul Magang</p>
-          </div>
+          <span className="font-semibold text-sm">Metro Software</span>
         </div>
         <button
           type="button"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition"
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="p-1 rounded-lg text-slate-300 hover:text-white"
         >
-          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
       </div>
 
-      {/* Sidebar for Desktop & Mobile Drawer */}
+      {/* Sidebar - Matching Figma Deep Forest Green #17362f */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-slate-300 flex flex-col transition-transform duration-200 md:static md:translate-x-0 ${
-          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#17362f] text-[#a4c2b8] flex flex-col justify-between transition-transform duration-200 md:static md:translate-x-0 ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-5 border-b border-slate-800 hidden md:flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center font-bold text-white shadow-md text-base">
-            M
+        <div className="flex flex-col flex-1 overflow-y-auto">
+          {/* Logo Brand Header */}
+          <div className="p-5 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg border border-[#375e53] bg-[#1d433b] flex items-center justify-center font-bold text-sm text-white shadow-xs">
+              M
+            </div>
+            <span className="font-semibold text-sm text-white tracking-tight">
+              Metro Software
+            </span>
           </div>
-          <div>
-            <h1 className="font-bold text-base text-white tracking-tight leading-none">MetroHub</h1>
-            <p className="text-xs text-indigo-400 font-medium mt-0.5">Sistem Manajemen Magang</p>
-          </div>
+
+          {/* Navigation Links */}
+          <nav className="px-3 py-2 space-y-4">
+            {navGroups.map((group, idx) => (
+              <div key={idx} className="space-y-1">
+                {group.header && (
+                  <p className="px-3 py-1 text-[10px] font-semibold tracking-wider text-[#6b9386] uppercase">
+                    {group.header}
+                  </p>
+                )}
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname.startsWith(item.path);
+                  return (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => setMobileOpen(false)}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition ${
+                        isActive
+                          ? 'bg-[#f4f6f5] text-[#17362f] font-semibold shadow-xs'
+                          : 'text-[#9abcb1] hover:text-white hover:bg-[#1f453d]'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span>{item.name}</span>
+                    </NavLink>
+                  );
+                })}
+              </div>
+            ))}
+          </nav>
         </div>
 
-        {/* User Card */}
-        <div className="p-4 mx-3 my-3 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold flex items-center justify-center border border-indigo-500/30">
-            {user?.nama?.charAt(0) || 'U'}
-          </div>
-          <div className="overflow-hidden flex-1">
-            <p className="text-xs font-semibold text-white truncate">{user?.nama || 'Pengguna'}</p>
-            <p className="text-[11px] text-slate-400 truncate">{user?.role || 'User'}</p>
-          </div>
-        </div>
-
-        {/* Nav Links */}
-        <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
-          <div className="px-3 pb-1 text-[10px] font-semibold tracking-wider text-slate-500 uppercase">
-            Menu Utama
-          </div>
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                onClick={() => setMobileMenuOpen(false)}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition ${
-                    isActive
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/80'
-                  }`
-                }
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span>{item.name}</span>
-              </NavLink>
-            );
-          })}
-        </nav>
-
-        {/* Logout */}
-        <div className="p-3 border-t border-slate-800">
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition"
-          >
-            <LogOut className="w-4 h-4 shrink-0" />
-            <span>Keluar (Logout)</span>
-          </button>
+        {/* Sidebar Footer */}
+        <div className="p-4 mx-3 mb-4 rounded-xl border border-[#2b5349] bg-[#15322b]">
+          <p className="text-xs font-semibold text-white">Ruang kerja Admin</p>
+          <p className="text-[11px] text-[#71988b]">Demo · data contoh</p>
         </div>
       </aside>
 
       {/* Backdrop for Mobile */}
-      {mobileMenuOpen && (
+      {mobileOpen && (
         <div
-          onClick={() => setMobileMenuOpen(false)}
-          className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-xs"
+          onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
         />
       )}
 
-      {/* Content Area */}
-      <main className="flex-1 flex flex-col min-w-0">
-        <div className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top Header matching Figma */}
+        <header className="h-14 bg-white border-b border-[#e2e7e4] px-6 md:px-8 flex items-center justify-between sticky top-0 z-30">
+          <div className="text-xs text-slate-500 font-medium">
+            Operasional internal <span className="font-semibold text-slate-700">20 Oktober 2026</span>
+          </div>
+
+          {/* User Profile Pill */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+              className="flex items-center gap-2.5 hover:bg-slate-50 p-1.5 rounded-xl transition select-none"
+            >
+              <div className="w-8 h-8 rounded-full bg-[#d6e7df] text-[#17362f] font-bold text-xs flex items-center justify-center">
+                NP
+              </div>
+              <div className="text-left hidden sm:block">
+                <p className="text-xs font-semibold text-slate-800 leading-tight">Nadia Pratama</p>
+                <p className="text-[10px] text-slate-400 leading-tight">Admin</p>
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            </button>
+
+            {userDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-100 py-1 z-50">
+                <div className="px-4 py-2 border-b border-slate-100">
+                  <p className="text-xs font-semibold text-slate-800">Nadia Pratama</p>
+                  <p className="text-[11px] text-slate-400">admin@metro.demo</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2"
+                >
+                  <LogOut className="w-3.5 h-3.5" /> Keluar
+                </button>
+              </div>
+            )}
+          </div>
+        </header>
+
+        {/* Page View Container */}
+        <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
           <Outlet />
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 };
