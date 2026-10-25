@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Plus,
   ChevronDown,
@@ -78,8 +78,15 @@ export const AdminTasksPage = () => {
   // Form Validation Errors
   const [formErrors, setFormErrors] = useState({});
 
-  // Success Banner State (AFTER F07)
-  const [successBanner, setSuccessBanner] = useState(null);
+  // Toast Notification State (Auto dismiss after 3 seconds)
+  const [toastNotification, setToastNotification] = useState(null);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   // Open Add Task Modal (Prefilled according to Figma example)
   const handleOpenAddModal = () => {
@@ -148,11 +155,16 @@ export const AdminTasksPage = () => {
     setTasks([newTask, ...tasks]);
     setShowAddModal(false);
 
-    // Set success banner matching Figma: AFTER F07 / PENERIMA TETAP RAKA ADITYA
-    setSuccessBanner({
+    // Show toast at bottom and auto-dismiss after 3 seconds
+    setToastNotification({
       title: 'Tugas berhasil diberikan',
       message: `${newTask.judul} ditambahkan untuk ${newTask.peserta}.`,
     });
+
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      setToastNotification(null);
+    }, 3000);
   };
 
   // Filter Tasks
@@ -267,28 +279,6 @@ export const AdminTasksPage = () => {
         </div>
       </div>
 
-      {/* Success Banner AFTER F07 (Persis seperti Screenshot Figma) */}
-      {successBanner && (
-        <div className="p-5 md:p-6 bg-[#edf6f1] border border-[#cde6d7] rounded-xl flex items-start justify-between gap-4 animate-in fade-in">
-          <div className="space-y-1">
-            <h4 className="text-base font-bold text-[#17362f]">
-              {successBanner.title}
-            </h4>
-            <p className="text-sm text-[#17362f]/90 leading-relaxed">
-              {successBanner.message}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSuccessBanner(null)}
-            className="text-[#17362f]/60 hover:text-[#17362f] p-1.5 rounded-lg transition cursor-pointer"
-            title="Tutup banner"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
       {/* Tabel Penugasan Sesuai Figma */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
@@ -351,6 +341,28 @@ export const AdminTasksPage = () => {
           </table>
         </div>
       </div>
+
+      {/* Toast Notifikasi di Bawah (Auto Dismiss 3 Detik) */}
+      {toastNotification && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm sm:max-w-md w-full bg-[#edf6f1] border border-[#cde6d7] shadow-xl rounded-xl p-4 flex items-start justify-between gap-3 animate-in fade-in slide-in-from-bottom-5 duration-300">
+          <div className="space-y-0.5">
+            <h4 className="text-sm font-bold text-[#176a43]">
+              {toastNotification.title}
+            </h4>
+            <p className="text-xs text-[#176a43]/90 leading-relaxed">
+              {toastNotification.message}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setToastNotification(null)}
+            className="text-[#176a43]/60 hover:text-[#176a43] p-1 rounded-lg transition cursor-pointer"
+            title="Tutup notifikasi"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* ======================================================== */}
       {/* MODAL F07: Beri Tugas dengan Validasi                    */}
