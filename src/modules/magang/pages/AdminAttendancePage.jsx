@@ -187,7 +187,7 @@ export const AdminAttendancePage = () => {
     <div className="space-y-6">
       {/* Header Halaman */}
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900 tracking-tight font-['Lexend']">
+        <h1 className="text-2xl font-semibold text-slate-900 tracking-tight font-lexend">
           Rekap Absensi
         </h1>
         <p className="text-sm text-slate-500 mt-1">
@@ -339,7 +339,7 @@ export const AdminAttendancePage = () => {
             {/* Modal Header */}
             <div className="p-6 pb-4 flex items-start justify-between border-b border-slate-100">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900 font-['Lexend']">
+                <h2 className="text-xl font-semibold text-slate-900 font-lexend">
                   Detail Absensi
                 </h2>
                 <p className="text-xs text-slate-500 mt-1">
@@ -369,7 +369,7 @@ export const AdminAttendancePage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Kolom Check-in */}
                 <div className="space-y-3">
-                  <h3 className="text-base font-semibold text-slate-900 font-['Lexend']">
+                  <h3 className="text-base font-semibold text-slate-900 font-lexend">
                     Check-in · {activeModalItem.checkinDetail.time}
                   </h3>
 
@@ -409,7 +409,7 @@ export const AdminAttendancePage = () => {
                 <div className="space-y-3">
                   {activeModalItem.checkoutDetail ? (
                     <>
-                      <h3 className="text-base font-semibold text-slate-900 font-['Lexend']">
+                      <h3 className="text-base font-semibold text-slate-900 font-lexend">
                         Check-out · {activeModalItem.checkoutDetail.time}
                       </h3>
 
@@ -446,7 +446,7 @@ export const AdminAttendancePage = () => {
                     </>
                   ) : (
                     <div className="p-5 bg-white rounded-xl border border-slate-200 space-y-3 h-full flex flex-col justify-start">
-                      <h3 className="text-base font-semibold text-slate-900 font-['Lexend']">
+                      <h3 className="text-base font-semibold text-slate-900 font-lexend">
                         Check-out
                       </h3>
 
@@ -482,7 +482,7 @@ export const AdminAttendancePage = () => {
 
               {/* Logbook Terkait Box */}
               <div className="p-5 bg-white rounded-xl border border-slate-200 space-y-2">
-                <h4 className="text-base font-semibold text-slate-900 font-['Lexend']">
+                <h4 className="text-base font-semibold text-slate-900 font-lexend">
                   Logbook terkait
                 </h4>
                 <p className="text-sm text-slate-700 leading-relaxed">
