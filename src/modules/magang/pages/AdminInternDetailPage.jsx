@@ -77,7 +77,7 @@ export const AdminInternDetailPage = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6 w-full">
       {/* Tombol Kembali ke Data Anak Magang */}
       <Link
         to="/admin/magang/interns"

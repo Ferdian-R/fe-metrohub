@@ -24,7 +24,7 @@ export const InternProfilePage = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl pb-12 font-sans">
+    <div className="space-y-6 w-full pb-12 font-sans">
       {/* Header Halaman Sesuai Figma M-05 */}
       <div>
         <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight font-lexend">

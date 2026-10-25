@@ -92,7 +92,7 @@ export const InternDashboardPage = () => {
   }, []);
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6 w-full">
       {/* Page Title & Subtitle */}
       <div>
         <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight font-lexend">

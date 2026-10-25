@@ -140,7 +140,7 @@ export const InternAttendancePage = () => {
     !hasLocation;
 
   return (
-    <div className="space-y-6 max-w-6xl pb-12 font-sans">
+    <div className="space-y-6 w-full pb-12 font-sans">
       {/* Header Halaman & Dropdown Alat Demo Skenario */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

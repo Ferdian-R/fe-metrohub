@@ -192,14 +192,15 @@ export const DashboardLayout = () => {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Header Sticky */}
-        <header className="h-14 bg-white/95 backdrop-blur-xs border-b border-[#e2e7e4] px-6 md:px-8 flex items-center justify-between sticky top-0 z-30 shrink-0">
-          <div className="text-xs text-slate-500 font-medium">
-            {headerContext}
-          </div>
+        {/* Top Header Sticky - Aligned with main container */}
+        <header className="h-14 bg-white/95 backdrop-blur-xs border-b border-[#e2e7e4] px-6 md:px-8 lg:px-10 sticky top-0 z-30 shrink-0 flex items-center">
+          <div className="w-full max-w-[1400px] mx-auto flex items-center justify-between">
+            <div className="text-xs text-slate-500 font-medium">
+              {headerContext}
+            </div>
 
-          {/* User Profile Pill */}
-          <div className="relative">
+            {/* User Profile Pill */}
+            <div className="relative">
             <button
               type="button"
               onClick={() => setUserDropdownOpen(!userDropdownOpen)}
@@ -250,11 +251,14 @@ export const DashboardLayout = () => {
               </div>
             )}
           </div>
+          </div>
         </header>
 
-        {/* Page View Container */}
-        <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
-          <Outlet />
+        {/* Page View Container - Lebar & Di Tengah Konsisten */}
+        <main className="flex-1 px-6 md:px-8 lg:px-10 py-6 md:py-8 w-full">
+          <div className="w-full max-w-[1400px] mx-auto">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>
