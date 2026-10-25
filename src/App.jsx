@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
@@ -9,6 +9,11 @@ import { AdminInternDetailPage } from './modules/magang/pages/AdminInternDetailP
 import { AdminAttendancePage } from './modules/magang/pages/AdminAttendancePage';
 import { AdminLogbookPage } from './modules/magang/pages/AdminLogbookPage';
 import { AdminTasksPage } from './modules/magang/pages/AdminTasksPage';
+import { InternDashboardPage } from './modules/magang/pages/InternDashboardPage';
+import { InternAttendancePage } from './modules/magang/pages/InternAttendancePage';
+import { InternLogbookPage } from './modules/magang/pages/InternLogbookPage';
+import { InternTasksPage } from './modules/magang/pages/InternTasksPage';
+import { InternProfilePage } from './modules/magang/pages/InternProfilePage';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -28,6 +33,15 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+// Pengarah cerdas berdasarkan role user
+const RoleBasedRedirect = () => {
+  const { user } = useAuth();
+  if (user?.role === 'Anak Magang') {
+    return <Navigate to="/magang/dashboard" replace />;
+  }
+  return <Navigate to="/admin/magang/interns" replace />;
+};
+
 export default function App() {
   return (
     <AuthProvider>
@@ -44,16 +58,28 @@ export default function App() {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<Navigate to="/admin/magang/interns" replace />} />
+              <Route index element={<RoleBasedRedirect />} />
+
+              {/* Portal Admin Routes */}
+              <Route path="admin/dashboard" element={<Navigate to="/admin/magang/interns" replace />} />
               <Route path="admin/magang/interns" element={<AdminInternsPage />} />
               <Route path="admin/magang/interns/:id" element={<AdminInternDetailPage />} />
               <Route path="admin/magang/absensi" element={<AdminAttendancePage />} />
               <Route path="admin/magang/logbook" element={<AdminLogbookPage />} />
               <Route path="admin/magang/penugasan" element={<AdminTasksPage />} />
-              <Route path="admin/dashboard" element={<Navigate to="/admin/magang/interns" replace />} />
+
+              {/* Portal Anak Magang Routes (M-01) */}
+              <Route path="magang/dashboard" element={<InternDashboardPage />} />
+              <Route path="magang/absensi" element={<InternAttendancePage />} />
+              <Route path="magang/logbook" element={<InternLogbookPage />} />
+              <Route path="magang/tugas" element={<InternTasksPage />} />
+              <Route path="magang/profil" element={<InternProfilePage />} />
+
+              {/* Universal dashboard fallback */}
+              <Route path="dashboard" element={<RoleBasedRedirect />} />
             </Route>
 
-            <Route path="*" element={<Navigate to="/admin/magang/interns" replace />} />
+            <Route path="*" element={<RoleBasedRedirect />} />
           </Routes>
         </BrowserRouter>
       </ToastProvider>

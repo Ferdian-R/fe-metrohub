@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
     role: 'Admin',
     permissions: ['core:dashboard', 'core:pengguna', 'core:lokasi', 'magang:kelola', 'keuangan:kelola', 'keuangan:lihat'],
   });
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
 
   const fetchUser = async () => {
     try {

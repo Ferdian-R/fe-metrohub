@@ -1,14 +1,12 @@
 import { useToast } from '../../../context/ToastContext';
 import React, { useState } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
   X,
-  CheckCircle2,
 } from 'lucide-react';
 
 export const AdminInternDetailPage = () => {
-  const navigate = useNavigate();
   const { id } = useParams();
 
   // Data Peserta (Default Raka Aditya sesuai Figma A-03)
