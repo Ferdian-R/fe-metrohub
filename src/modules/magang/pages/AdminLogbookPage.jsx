@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import {
+  Search,
   ChevronDown,
+  ChevronRight,
   X,
+  Calendar,
 } from 'lucide-react';
 
 const INITIAL_LOGBOOK_DATA = [
@@ -92,16 +95,16 @@ export const AdminLogbookPage = () => {
     <div className="space-y-6">
       {/* Header Halaman Sesuai Figma */}
       <div>
-        <h1 className="text-2xl font-semibold text-slate-800 tracking-tight font-lexend leading-8">
+        <h1 className="text-2xl font-semibold text-slate-900 tracking-tight font-lexend">
           Logbook Peserta
         </h1>
-        <p className="text-base text-slate-500 font-normal font-source-sans leading-6 mt-1">
+        <p className="text-base font-normal text-slate-500 leading-6 mt-1">
           Catatan harian peserta dan absensi terkait.
         </p>
       </div>
 
-      {/* Filter Card Sesuai Figma */}
-      <div className="bg-white rounded-lg outline outline-1 outline-offset-[-1px] outline-slate-200 p-4 shadow-2xs">
+      {/* Filter Card */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs">
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
           {/* Input Cari Isi Logbook */}
           <div className="flex-1 relative">
@@ -110,7 +113,7 @@ export const AdminLogbookPage = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Cari isi logbook"
-              className="w-full h-11 px-4 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 text-base font-normal font-source-sans text-slate-800 placeholder-slate-400 focus:outline-none focus:outline-[#17362f] transition"
+              className="w-full h-11 px-4 bg-white border border-slate-200 rounded-lg text-base font-normal text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f] transition"
             />
           </div>
 
@@ -119,14 +122,14 @@ export const AdminLogbookPage = () => {
             <select
               value={selectedPeserta}
               onChange={(e) => setSelectedPeserta(e.target.value)}
-              className="w-full h-11 pl-4 pr-9 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 text-base font-normal font-source-sans text-slate-800 focus:outline-none focus:outline-[#17362f] appearance-none cursor-pointer transition"
+              className="w-full h-11 pl-4 pr-9 bg-white border border-slate-200 rounded-lg text-base font-normal text-slate-800 focus:outline-none focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f] appearance-none cursor-pointer transition"
             >
               <option value="Semua peserta">Semua peserta</option>
               <option value="Raka Aditya">Raka Aditya</option>
               <option value="Salsa Maharani">Salsa Maharani</option>
               <option value="Dimas Nugraha">Dimas Nugraha</option>
             </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-700">
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
               <ChevronDown className="w-4 h-4" />
             </div>
           </div>
@@ -136,24 +139,24 @@ export const AdminLogbookPage = () => {
             <select
               value={selectedBulan}
               onChange={(e) => setSelectedBulan(e.target.value)}
-              className="w-full h-11 pl-4 pr-9 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 text-base font-normal font-source-sans text-slate-800 focus:outline-none focus:outline-[#17362f] appearance-none cursor-pointer transition"
+              className="w-full h-11 pl-4 pr-9 bg-white border border-slate-200 rounded-lg text-base font-normal text-slate-800 focus:outline-none focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f] appearance-none cursor-pointer transition"
             >
               <option value="Oktober 2026">Oktober 2026</option>
               <option value="September 2026">September 2026</option>
               <option value="Agustus 2026">Agustus 2026</option>
               <option value="Semua bulan">Semua bulan</option>
             </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-700">
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
               <ChevronDown className="w-4 h-4" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* List Logbook Card Container Sesuai Figma */}
-      <div className="bg-white rounded-lg outline outline-1 outline-offset-[-1px] outline-slate-200 shadow-2xs divide-y divide-slate-100 overflow-hidden">
+      {/* List Logbook Card Container */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs divide-y divide-slate-100 overflow-hidden">
         {filteredList.length === 0 ? (
-          <div className="py-12 text-center text-slate-400 text-base font-normal font-source-sans leading-6">
+          <div className="py-12 text-center text-slate-400 text-sm">
             Tidak ada catatan logbook yang sesuai dengan filter.
           </div>
         ) : (
@@ -162,27 +165,24 @@ export const AdminLogbookPage = () => {
               key={item.id}
               className="p-5 md:p-6 flex flex-col sm:flex-row items-start gap-4 md:gap-8 hover:bg-slate-50/70 transition"
             >
-              {/* Kolom Tanggal: text-Color-muted text-base font-normal font-['Source_Sans_3'] leading-6 */}
-              <div className="w-full sm:w-36 shrink-0 text-slate-500 text-base font-normal font-source-sans leading-6">
+              {/* Kolom Tanggal */}
+              <div className="w-full sm:w-36 shrink-0 text-base font-normal text-slate-500 leading-6">
                 {item.tanggal}
               </div>
 
               {/* Kolom Isi Catatan & Aksi */}
-              <div className="flex-1 min-w-0 space-y-1">
-                {/* Raka Aditya: text-Color-text text-base font-bold font-['Source_Sans_3'] leading-6 */}
-                <h3 className="text-slate-800 text-base font-bold font-source-sans leading-6">
+              <div className="flex-1 min-w-0 space-y-1.5">
+                <h3 className="text-base font-bold text-slate-900 leading-6">
                   {item.peserta}
                 </h3>
-                {/* Isi Logbook: text-Color-text text-base font-normal font-['Source_Sans_3'] leading-6 */}
-                <p className="text-slate-800 text-base font-normal font-source-sans leading-6">
+                <p className="text-base font-normal text-slate-800 leading-6">
                   {item.isi}
                 </p>
-                {/* Lihat absensi hari ini: text-Color-primary text-base font-semibold font-['Source_Sans_3'] leading-6 */}
-                <div className="pt-2">
+                <div className="pt-1">
                   <button
                     type="button"
                     onClick={() => setActiveModalItem(item)}
-                    className="inline-flex items-center gap-1.5 text-base font-semibold font-source-sans text-[#176a43] hover:text-[#0f462c] transition hover:underline cursor-pointer leading-6"
+                    className="inline-flex items-center gap-1.5 text-base font-semibold text-[#176a43] hover:text-[#0f462c] transition hover:underline cursor-pointer leading-6"
                   >
                     <span>Lihat absensi hari ini</span>
                     <span aria-hidden="true">&gt;</span>
@@ -201,10 +201,10 @@ export const AdminLogbookPage = () => {
             {/* Modal Header */}
             <div className="p-6 pb-4 flex items-start justify-between border-b border-slate-100">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900 font-lexend leading-7">
+                <h2 className="text-xl font-semibold text-slate-900 font-lexend">
                   Detail Logbook
                 </h2>
-                <p className="text-xs text-slate-500 font-normal font-source-sans leading-5 mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   {activeModalItem.peserta} · {activeModalItem.tanggalLengkap}
                 </p>
               </div>
@@ -221,43 +221,43 @@ export const AdminLogbookPage = () => {
             <div className="p-6 overflow-y-auto space-y-4 flex-1">
               {/* Status Pill Tersimpan */}
               <div>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold font-source-sans bg-[#e7f5ec] text-[#176a43] border border-[#c6e9d4]">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#e7f5ec] text-[#176a43] border border-[#c6e9d4]">
                   {activeModalItem.savedStatus}
                 </span>
               </div>
 
               {/* Card 1: Pekerjaan hari ini */}
               <div className="p-5 bg-white rounded-xl border border-slate-200 space-y-2">
-                <h3 className="text-base font-semibold text-slate-900 font-lexend leading-6">
+                <h3 className="text-base font-semibold text-slate-900 font-lexend">
                   Pekerjaan hari ini
                 </h3>
-                <p className="text-base text-slate-800 font-normal font-source-sans leading-6">
+                <p className="text-sm text-slate-700 leading-relaxed">
                   {activeModalItem.isi}
                 </p>
               </div>
 
               {/* Card 2: Absensi terkait */}
               <div className="p-5 bg-white rounded-xl border border-slate-200 space-y-3">
-                <h3 className="text-base font-semibold text-slate-900 font-lexend leading-6">
+                <h3 className="text-base font-semibold text-slate-900 font-lexend">
                   Absensi terkait
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                   {/* Kolom Check-in */}
                   <div>
-                    <p className="text-xs text-slate-400 font-medium font-source-sans leading-4">Check-in</p>
-                    <p className="text-base font-semibold font-source-sans text-slate-800 leading-6 mt-0.5">
+                    <p className="text-xs text-slate-400 font-medium">Check-in</p>
+                    <p className="text-sm font-semibold text-slate-800 mt-0.5">
                       {activeModalItem.absensi.checkin}
                     </p>
-                    <p className="text-xs text-slate-500 font-normal font-source-sans leading-4 mt-1">
+                    <p className="text-xs text-slate-500 mt-1">
                       {activeModalItem.absensi.keterangan}
                     </p>
                   </div>
 
                   {/* Kolom Check-out */}
                   <div>
-                    <p className="text-xs text-slate-400 font-medium font-source-sans leading-4">Check-out</p>
-                    <p className="text-base font-semibold font-source-sans text-slate-800 leading-6 mt-0.5">
+                    <p className="text-xs text-slate-400 font-medium">Check-out</p>
+                    <p className="text-sm font-semibold text-slate-800 mt-0.5">
                       {activeModalItem.absensi.checkout}
                     </p>
                   </div>
@@ -265,7 +265,7 @@ export const AdminLogbookPage = () => {
               </div>
 
               {/* Note Informasi */}
-              <p className="text-xs text-slate-400 font-normal font-source-sans leading-5 pt-1">
+              <p className="text-xs text-slate-400 pt-1">
                 Hanya baca. Isi logbook dikelola peserta sebelum check-out.
               </p>
             </div>
@@ -275,7 +275,7 @@ export const AdminLogbookPage = () => {
               <button
                 type="button"
                 onClick={() => setActiveModalItem(null)}
-                className="px-5 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 rounded-lg text-sm font-semibold font-source-sans transition active:scale-95 shadow-2xs cursor-pointer"
+                className="px-5 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 rounded-lg text-sm font-semibold transition active:scale-95 shadow-2xs cursor-pointer"
               >
                 Tutup
               </button>
