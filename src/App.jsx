@@ -6,6 +6,7 @@ import { LoginPage } from './modules/core/pages/LoginPage';
 import { AdminInternsPage } from './modules/magang/pages/AdminInternsPage';
 import { AdminInternDetailPage } from './modules/magang/pages/AdminInternDetailPage';
 import { AdminAttendancePage } from './modules/magang/pages/AdminAttendancePage';
+import { AdminLogbookPage } from './modules/magang/pages/AdminLogbookPage';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="admin/magang/interns" element={<AdminInternsPage />} />
             <Route path="admin/magang/interns/:id" element={<AdminInternDetailPage />} />
             <Route path="admin/magang/absensi" element={<AdminAttendancePage />} />
+            <Route path="admin/magang/logbook" element={<AdminLogbookPage />} />
             <Route path="admin/dashboard" element={<Navigate to="/admin/magang/interns" replace />} />
           </Route>
 
