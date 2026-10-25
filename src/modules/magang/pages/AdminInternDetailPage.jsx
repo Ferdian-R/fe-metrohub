@@ -134,7 +134,7 @@ export const AdminInternDetailPage = () => {
           <span className="text-[11px] font-bold text-[#17362f] tracking-wider uppercase">
             PESERTA AKTIF
           </span>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight mt-0.5">
+          <h1 className="text-2xl font-semibold text-slate-900 tracking-tight font-lexend mt-0.5">
             {intern.nama}
           </h1>
           <p className="text-xs md:text-sm text-slate-500 mt-1">
@@ -217,7 +217,7 @@ export const AdminInternDetailPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Card Kiri: Informasi Magang */}
           <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200/90 p-6 md:p-7 shadow-2xs">
-            <h3 className="text-base font-bold text-slate-900 mb-5">
+            <h3 className="text-base font-semibold text-slate-900 font-lexend mb-5">
               Informasi magang
             </h3>
 
@@ -273,7 +273,7 @@ export const AdminInternDetailPage = () => {
           {/* Card Kanan: Ringkasan Hari Ini Sesuai Figma */}
           <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/90 p-6 md:p-7 shadow-2xs flex flex-col justify-between">
             <div>
-              <h3 className="text-base font-bold text-slate-900">
+              <h3 className="text-base font-semibold text-slate-900 font-lexend">
                 Ringkasan hari ini
               </h3>
               <p className="text-xs text-slate-400 mt-0.5 mb-6">
@@ -348,7 +348,7 @@ export const AdminInternDetailPage = () => {
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-2xs animate-fadeIn">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 md:p-7 shadow-2xl relative border border-slate-200">
             <div className="flex items-center justify-between pb-2">
-              <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+              <h3 className="text-xl font-semibold text-slate-900 font-lexend">
                 Ubah Status Kerja
               </h3>
               <button
@@ -444,7 +444,7 @@ export const AdminInternDetailPage = () => {
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-2xs animate-fadeIn">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative border border-slate-200">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+              <h3 className="text-xl font-semibold text-slate-900 font-lexend">
                 Ubah Data Peserta
               </h3>
               <button

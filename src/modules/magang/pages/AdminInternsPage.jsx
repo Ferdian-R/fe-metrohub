@@ -254,10 +254,10 @@ export const AdminInternsPage = () => {
       {/* Header Halaman Sesuai Figma */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-[26px] font-bold text-slate-900 tracking-tight leading-tight">
+          <h1 className="text-2xl font-semibold text-slate-900 tracking-tight font-lexend">
             Data Anak Magang
           </h1>
-          <p className="text-xs md:text-sm text-slate-500 mt-0.5">
+          <p className="text-sm text-slate-500 mt-1">
             Data peserta, periode, dan status kerja.
           </p>
         </div>
@@ -415,7 +415,7 @@ export const AdminInternsPage = () => {
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-2xs animate-fadeIn">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative border border-slate-200">
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+              <h3 className="text-xl font-semibold text-slate-900 font-lexend">
                 Tambah Anak Magang
               </h3>
               <button
@@ -592,7 +592,7 @@ export const AdminInternsPage = () => {
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-2xs animate-fadeIn">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative border border-slate-200">
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+              <h3 className="text-xl font-semibold text-slate-900 font-lexend">
                 Ubah Data Anak Magang
               </h3>
               <button
