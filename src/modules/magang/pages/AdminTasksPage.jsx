@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useToast } from '../../../context/ToastContext';
 import {
   Plus,
@@ -59,7 +59,23 @@ const INITIAL_TASKS = [
 ];
 
 export const AdminTasksPage = () => {
-  const [tasks, setTasks] = useState(INITIAL_TASKS);
+  const [tasks, setTasks] = useState(() => {
+    try {
+      const saved = localStorage.getItem('metrohub_tasks');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return INITIAL_TASKS;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('metrohub_tasks', JSON.stringify(tasks));
+    } catch {
+      // ignore
+    }
+  }, [tasks]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPeserta, setSelectedPeserta] = useState('Semua peserta');
   const [selectedStatus, setSelectedStatus] = useState('Semua status');
