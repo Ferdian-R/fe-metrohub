@@ -186,7 +186,7 @@ export const InternDashboardPage = () => {
         </div>
 
         {/* Card 2: Masa magang */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs flex flex-col justify-between">
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs">
           <div>
             <p className="text-sm font-medium text-slate-500 font-source-sans">
               Masa magang
@@ -199,7 +199,7 @@ export const InternDashboardPage = () => {
             </p>
           </div>
 
-          <div className="pt-6">
+          <div className="mt-5">
             {/* Progress Bar */}
             <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
               <div
