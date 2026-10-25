@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Plus,
   X,
@@ -350,16 +351,7 @@ export const AdminInternsPage = () => {
                     </span>
                   </td>
                   <td className="px-5 py-4 text-right whitespace-nowrap font-medium">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedIntern(intern);
-                        setShowDetailModal(true);
-                      }}
-                      className="text-[#17362f] hover:text-[#285e51] hover:underline mr-4 transition"
-                    >
-                      Lihat Detail
-                    </button>
+                    <Link to={`/admin/magang/interns/${intern.id}`} className="text-[#17362f] hover:text-[#285e51] hover:underline mr-4 transition">Lihat Detail</Link>
                     <button
                       type="button"
                       onClick={() => handleOpenEditModal(intern)}

@@ -1,31 +1,24 @@
-﻿import React from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { LoginPage } from './modules/core/pages/LoginPage';
-import { InternDashboard } from './modules/magang/pages/InternDashboard';
-import { AttendancePage } from './modules/magang/pages/AttendancePage';
-import { TasksPage } from './modules/magang/pages/TasksPage';
 import { AdminInternsPage } from './modules/magang/pages/AdminInternsPage';
-import { AdminAttendancePage } from './modules/magang/pages/AdminAttendancePage';
+import { AdminInternDetailPage } from './modules/magang/pages/AdminInternDetailPage';
 
-const ProtectedRoute = ({ children, requiredPermission }) => {
-  const { user, loading, hasPermission } = useAuth();
+const ProtectedRoute = ({ children }) => {
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen flex items-center justify-center bg-[#f4f6f5]">
+        <div className="w-8 h-8 border-4 border-[#17362f] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   if (!user) {
     return <Navigate to="/login" replace />;
-  }
-
-  if (requiredPermission && !hasPermission(requiredPermission) && user.role !== 'Admin') {
-    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
@@ -38,7 +31,6 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
 
-          {/* Protected Routes inside DashboardLayout */}
           <Route
             path="/"
             element={
@@ -47,37 +39,13 @@ export default function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            
-            {/* Intern Routes */}
-            <Route path="dashboard" element={<InternDashboard />} />
-            <Route path="absensi" element={<AttendancePage />} />
-            <Route path="tugas" element={<TasksPage />} />
-
-            {/* Admin Routes */}
-            <Route
-              path="admin/dashboard"
-              element={<Navigate to="/admin/magang/interns" replace />}
-            />
-            <Route
-              path="admin/magang/interns"
-              element={
-                <ProtectedRoute requiredPermission="magang:kelola">
-                  <AdminInternsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="admin/magang/absensi"
-              element={
-                <ProtectedRoute requiredPermission="magang:kelola">
-                  <AdminAttendancePage />
-                </ProtectedRoute>
-              }
-            />
+            <Route index element={<Navigate to="/admin/magang/interns" replace />} />
+            <Route path="admin/magang/interns" element={<AdminInternsPage />} />
+            <Route path="admin/magang/interns/:id" element={<AdminInternDetailPage />} />
+            <Route path="admin/dashboard" element={<Navigate to="/admin/magang/interns" replace />} />
           </Route>
 
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/admin/magang/interns" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
