@@ -1,3 +1,4 @@
+import { useToast } from '../../../context/ToastContext';
 import React, { useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
@@ -43,8 +44,7 @@ export const AdminInternDetailPage = () => {
   });
 
   // Banner Notifikasi Skenario Perubahan Status Kerja (Figma A-03 After)
-  const [statusSuccessBanner, setStatusSuccessBanner] = useState(false);
-  const [generalSuccessBanner, setGeneralSuccessBanner] = useState(null);
+  const { showToast } = useToast();
 
   // Simpan Perubahan Status Kerja
   const handleSaveStatusKerja = (e) => {
@@ -54,7 +54,10 @@ export const AdminInternDetailPage = () => {
       status_kerja: newStatusKerja,
     }));
     setShowStatusModal(false);
-    setStatusSuccessBanner(true);
+    showToast({
+      title: 'Status kerja berhasil diperbarui',
+      message: `Status kerja ${intern.nama} diubah menjadi ${selectedStatusKerja}.`,
+    });
   };
 
   // Simpan Ubah Data Peserta
@@ -69,8 +72,10 @@ export const AdminInternDetailPage = () => {
       tanggal_selesai: editForm.tanggal_selesai,
     }));
     setShowEditModal(false);
-    setGeneralSuccessBanner(`Data ${editForm.nama} berhasil diperbarui.`);
-    setTimeout(() => setGeneralSuccessBanner(null), 5000);
+    showToast({
+      title: 'Data peserta tersimpan',
+      message: `Data ${editForm.nama} berhasil diperbarui.`,
+    });
   };
 
   return (
@@ -85,48 +90,9 @@ export const AdminInternDetailPage = () => {
       </Link>
 
       {/* Notifikasi Umum */}
-      {generalSuccessBanner && (
-        <div className="p-4 rounded-xl bg-[#eaf4ef] border border-[#a4d4bc] text-[#17362f] text-xs font-medium flex items-center justify-between">
-          <span>{generalSuccessBanner}</span>
-          <button
-            type="button"
-            onClick={() => setGeneralSuccessBanner(null)}
-            className="text-slate-400 hover:text-slate-700"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
+      
 
-      {/* Banner Skenario Perubahan Status Kerja Sesuai Figma A-03 After */}
-      {statusSuccessBanner && (
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4 animate-fadeIn">
-          <div>
-            <h4 className="text-base font-bold text-slate-900">Status kerja diperbarui</h4>
-            <div className="mt-2">
-              <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#e7f5ec] text-[#206941]">
-                {intern.status_kerja}
-              </span>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-[#eaf4ef] border border-[#a4d4bc] text-[#17362f] space-y-0.5">
-            <p className="font-bold text-xs md:text-sm text-[#17362f]">
-              Status {intern.nama.split(' ')[0]} berhasil disimpan
-            </p>
-            <p className="text-xs text-[#355f52]">
-              Absensi berikutnya menggunakan aturan {intern.status_kerja}. Koordinat tetap diperlukan.
-            </p>
-          </div>
-
-          <div className="text-xs text-slate-500 pt-1 space-y-0.5">
-            <p className="font-medium text-slate-700">{intern.nama} · {intern.email}</p>
-            <p className="text-[11px] text-slate-400">
-              Riwayat 20 Oktober 2026 tetap On-site, dengan bukti dan lokasi semula.
-            </p>
-          </div>
-        </div>
-      )}
+      
 
       {/* Profil Header Card Sesuai Figma */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1">

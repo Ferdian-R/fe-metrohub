@@ -1,3 +1,4 @@
+import { useToast } from '../../../context/ToastContext';
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -47,7 +48,7 @@ export const AdminInternsPage = () => {
   const [lastAddedAccount, setLastAddedAccount] = useState(null);
 
   // Success Banner State
-  const [successBanner, setSuccessBanner] = useState(null);
+  const { showToast } = useToast();
 
   // Filter & Pencarian
   const [searchQuery, setSearchQuery] = useState('');
@@ -157,9 +158,9 @@ export const AdminInternsPage = () => {
     setShowAddModal(false);
 
     // Banner & Akun Terhubung sesuai Figma AFTER F01
-    setSuccessBanner({
+    showToast({
       title: `${newIntern.nama} berhasil ditambahkan`,
-      subtitle: `Akun ${newIntern.email} terhubung dengan peserta ${newIntern.nama}.`,
+      message: `Akun ${newIntern.email} terhubung dengan peserta ${newIntern.nama}.`,
     });
     setLastAddedAccount({
       nama: newIntern.nama,
@@ -223,33 +224,16 @@ export const AdminInternsPage = () => {
     setShowEditModal(false);
 
     // Banner sesuai Figma AFTER F02
-    setSuccessBanner({
+    showToast({
       title: `Data ${updated.nama} tersimpan`,
-      subtitle: `Perubahan diterapkan pada peserta yang sama. Akun ${updated.email} tetap terhubung.`,
+      message: `Perubahan diterapkan pada peserta yang sama. Akun ${updated.email} tetap terhubung.`,
     });
     setLastAddedAccount(null);
   };
 
   return (
     <div className="space-y-6">
-      {/* Banner Notifikasi Sukses */}
-      {successBanner && (
-        <div className="p-4 md:p-5 rounded-xl bg-[#eaf4ef] border border-[#a4d4bc] text-[#17362f] flex items-start justify-between transition animate-fadeIn">
-          <div>
-            <h4 className="font-bold text-sm md:text-base text-[#17362f]">
-              {successBanner.title}
-            </h4>
-            <p className="text-xs text-[#3b6357] mt-0.5">{successBanner.subtitle}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSuccessBanner(null)}
-            className="text-[#3b6357] hover:text-[#17362f] p-1 rounded-md"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
+      
 
       {/* Header Halaman Sesuai Figma */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

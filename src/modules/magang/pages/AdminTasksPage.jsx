@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useToast } from '../../../context/ToastContext';
 import {
   Plus,
   ChevronDown,
@@ -78,15 +79,7 @@ export const AdminTasksPage = () => {
   // Form Validation Errors
   const [formErrors, setFormErrors] = useState({});
 
-  // Toast Notification State (Auto dismiss after 3 seconds)
-  const [toastNotification, setToastNotification] = useState(null);
-  const timerRef = useRef(null);
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
+  const { showToast } = useToast();
 
   // Open Add Task Modal (Prefilled according to Figma example)
   const handleOpenAddModal = () => {
@@ -155,16 +148,10 @@ export const AdminTasksPage = () => {
     setTasks([newTask, ...tasks]);
     setShowAddModal(false);
 
-    // Show toast at bottom and auto-dismiss after 3 seconds
-    setToastNotification({
+    showToast({
       title: 'Tugas berhasil diberikan',
       message: `${newTask.judul} ditambahkan untuk ${newTask.peserta}.`,
     });
-
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      setToastNotification(null);
-    }, 3000);
   };
 
   // Filter Tasks
