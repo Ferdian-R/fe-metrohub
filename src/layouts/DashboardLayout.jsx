@@ -67,9 +67,7 @@ export const DashboardLayout = () => {
       {/* Mobile Top Bar */}
       <div className="md:hidden bg-[#17362f] text-white px-4 py-3 flex items-center justify-between sticky top-0 z-40 shadow-xs">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg border border-[#3b5f56] bg-[#1d433b] flex items-center justify-center font-bold text-xs text-white">
-            M
-          </div>
+          <img src="/logo.png" alt="Metro Software" className="w-7 h-7 rounded-lg object-contain shadow-xs border border-[#3b5f56]" />
           <span className="font-semibold text-sm">Metro Software</span>
         </div>
         <button
@@ -90,9 +88,7 @@ export const DashboardLayout = () => {
         <div className="flex flex-col flex-1 overflow-y-auto">
           {/* Logo Brand Header */}
           <div className="p-5 flex items-center gap-3 shrink-0">
-            <div className="w-8 h-8 rounded-lg border border-[#375e53] bg-[#1d433b] flex items-center justify-center font-bold text-sm text-white shadow-xs">
-              M
-            </div>
+            <img src="/logo.png" alt="Metro Software" className="w-8 h-8 rounded-lg object-contain shadow-xs border border-[#375e53]" />
             <span className="font-semibold text-sm text-white tracking-tight">
               Metro Software
             </span>

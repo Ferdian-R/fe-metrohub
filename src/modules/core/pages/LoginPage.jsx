@@ -47,9 +47,7 @@ export const LoginPage = () => {
         <div className="space-y-12">
           {/* Logo Metro Software */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg border border-[#3b5f56] bg-[#1d433b] flex items-center justify-center font-bold text-sm text-white shadow-xs">
-              M
-            </div>
+            <img src="/logo.png" alt="Metro Software" className="w-8 h-8 rounded-lg object-contain shadow-xs border border-[#3b5f56]" />
             <span className="font-semibold text-sm tracking-tight text-slate-100">
               Metro Software
             </span>
