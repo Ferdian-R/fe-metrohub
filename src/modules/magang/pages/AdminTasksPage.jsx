@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import {
   Plus,
-  Search,
   ChevronDown,
   X,
-  CheckCircle2,
-  Calendar,
+  AlertCircle,
 } from 'lucide-react';
 
 const INTERNS_MAP = {
@@ -77,10 +75,13 @@ export const AdminTasksPage = () => {
     tenggat: '',
   });
 
-  // Success Banner State
+  // Form Validation Errors
+  const [formErrors, setFormErrors] = useState({});
+
+  // Success Banner State (AFTER F07)
   const [successBanner, setSuccessBanner] = useState(null);
 
-  // Open Add Task Modal
+  // Open Add Task Modal (Prefilled according to Figma example)
   const handleOpenAddModal = () => {
     setFormData({
       penerima: 'Raka Aditya',
@@ -89,16 +90,37 @@ export const AdminTasksPage = () => {
         'Periksa filter periode, jenis, dan kategori pada daftar transaksi. Cocokkan hasil dengan data contoh dan pastikan reset filter menampilkan daftar semula.',
       tenggat: '2026-10-23',
     });
+    setFormErrors({});
     setShowAddModal(true);
   };
 
-  // Handle Submit Beri Tugas
+  // Handle Submit Beri Tugas with strict validation
   const handleSubmitTask = (e) => {
     e.preventDefault();
 
-    if (!formData.judul.trim()) return;
+    const errors = {};
+    if (!formData.judul.trim()) {
+      errors.judul = 'Judul tugas wajib diisi.';
+    } else if (formData.judul.trim().length < 3) {
+      errors.judul = 'Judul tugas minimal 3 karakter.';
+    }
 
-    const dateObj = new Date(formData.tenggat || '2026-10-23');
+    if (!formData.deskripsi.trim()) {
+      errors.deskripsi = 'Deskripsi tugas wajib diisi.';
+    }
+
+    if (!formData.tenggat) {
+      errors.tenggat = 'Tenggat waktu wajib ditentukan.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
+    setFormErrors({});
+
+    const dateObj = new Date(formData.tenggat);
     const day = dateObj.getDate() || 23;
     const monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
     const monthsLong = [
@@ -111,24 +133,25 @@ export const AdminTasksPage = () => {
 
     const newTask = {
       id: Date.now(),
-      judul: formData.judul,
+      judul: formData.judul.trim(),
       peserta: formData.penerima,
       email: INTERNS_MAP[formData.penerima] || 'peserta@metro.demo',
       tenggat: `${day} ${monthShort} ${year}`,
-      rawTenggat: formData.tenggat || '2026-10-23',
+      rawTenggat: formData.tenggat,
       tenggatFormatted: `${day} ${monthLong} ${year}`,
       status: 'Belum Dikerjakan',
       isTerlambat: false,
-      deskripsi: formData.deskripsi,
+      deskripsi: formData.deskripsi.trim(),
       catatanProgres: 'Belum ada pembaruan.',
     };
 
     setTasks([newTask, ...tasks]);
     setShowAddModal(false);
 
+    // Set success banner matching Figma: AFTER F07 / PENERIMA TETAP RAKA ADITYA
     setSuccessBanner({
       title: 'Tugas berhasil diberikan',
-      message: `${formData.judul} ditambahkan untuk ${formData.penerima}.`,
+      message: `${newTask.judul} ditambahkan untuk ${newTask.peserta}.`,
     });
   };
 
@@ -173,27 +196,6 @@ export const AdminTasksPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* Success Banner AFTER F07 */}
-      {successBanner && (
-        <div className="p-4 bg-[#e7f5ec] border border-[#c6e9d4] rounded-xl flex items-start justify-between gap-3 animate-in fade-in">
-          <div className="space-y-0.5">
-            <h4 className="text-sm font-bold text-[#176a43]">
-              {successBanner.title}
-            </h4>
-            <p className="text-xs text-[#176a43]/90">
-              {successBanner.message}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSuccessBanner(null)}
-            className="text-[#176a43]/70 hover:text-[#176a43] p-1 rounded-lg"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
       {/* Header Halaman Sesuai Figma */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -265,6 +267,28 @@ export const AdminTasksPage = () => {
         </div>
       </div>
 
+      {/* Success Banner AFTER F07 (Persis seperti Screenshot Figma) */}
+      {successBanner && (
+        <div className="p-5 md:p-6 bg-[#edf6f1] border border-[#cde6d7] rounded-xl flex items-start justify-between gap-4 animate-in fade-in">
+          <div className="space-y-1">
+            <h4 className="text-base font-bold text-[#17362f]">
+              {successBanner.title}
+            </h4>
+            <p className="text-sm text-[#17362f]/90 leading-relaxed">
+              {successBanner.message}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSuccessBanner(null)}
+            className="text-[#17362f]/60 hover:text-[#17362f] p-1.5 rounded-lg transition cursor-pointer"
+            title="Tutup banner"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Tabel Penugasan Sesuai Figma */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
@@ -329,7 +353,7 @@ export const AdminTasksPage = () => {
       </div>
 
       {/* ======================================================== */}
-      {/* MODAL F07: Beri Tugas                                   */}
+      {/* MODAL F07: Beri Tugas dengan Validasi                    */}
       {/* ======================================================== */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-in fade-in duration-150">
@@ -383,14 +407,26 @@ export const AdminTasksPage = () => {
                 </label>
                 <input
                   type="text"
-                  required
                   value={formData.judul}
-                  onChange={(e) =>
-                    setFormData({ ...formData, judul: e.target.value })
-                  }
+                  onChange={(e) => {
+                    setFormData({ ...formData, judul: e.target.value });
+                    if (formErrors.judul) {
+                      setFormErrors({ ...formErrors, judul: null });
+                    }
+                  }}
                   placeholder="Misal: Validasi filter transaksi"
-                  className="w-full h-11 px-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f] transition"
+                  className={`w-full h-11 px-3 bg-white border rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none transition ${
+                    formErrors.judul
+                      ? 'border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f]'
+                  }`}
                 />
+                {formErrors.judul && (
+                  <p className="text-xs text-rose-600 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{formErrors.judul}</span>
+                  </p>
+                )}
               </div>
 
               {/* Field Deskripsi */}
@@ -401,12 +437,25 @@ export const AdminTasksPage = () => {
                 <textarea
                   rows={4}
                   value={formData.deskripsi}
-                  onChange={(e) =>
-                    setFormData({ ...formData, deskripsi: e.target.value })
-                  }
+                  onChange={(e) => {
+                    setFormData({ ...formData, deskripsi: e.target.value });
+                    if (formErrors.deskripsi) {
+                      setFormErrors({ ...formErrors, deskripsi: null });
+                    }
+                  }}
                   placeholder="Instruksi dan rincian penugasan peserta..."
-                  className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f] transition resize-none leading-relaxed"
+                  className={`w-full p-3 bg-white border rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none transition resize-none leading-relaxed ${
+                    formErrors.deskripsi
+                      ? 'border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f]'
+                  }`}
                 />
+                {formErrors.deskripsi && (
+                  <p className="text-xs text-rose-600 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{formErrors.deskripsi}</span>
+                  </p>
+                )}
               </div>
 
               {/* Field Tenggat */}
@@ -416,13 +465,25 @@ export const AdminTasksPage = () => {
                 </label>
                 <input
                   type="date"
-                  required
                   value={formData.tenggat}
-                  onChange={(e) =>
-                    setFormData({ ...formData, tenggat: e.target.value })
-                  }
-                  className="w-full h-11 px-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 font-medium focus:outline-none focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f] transition"
+                  onChange={(e) => {
+                    setFormData({ ...formData, tenggat: e.target.value });
+                    if (formErrors.tenggat) {
+                      setFormErrors({ ...formErrors, tenggat: null });
+                    }
+                  }}
+                  className={`w-full h-11 px-3 bg-white border rounded-lg text-sm text-slate-800 font-medium focus:outline-none transition ${
+                    formErrors.tenggat
+                      ? 'border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f]'
+                  }`}
                 />
+                {formErrors.tenggat && (
+                  <p className="text-xs text-rose-600 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{formErrors.tenggat}</span>
+                  </p>
+                )}
               </div>
 
               {/* Action Buttons */}
