@@ -329,28 +329,6 @@ export const AdminTasksPage = () => {
         </div>
       </div>
 
-      {/* Toast Notifikasi di Bawah (Auto Dismiss 3 Detik) */}
-      {toastNotification && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-sm sm:max-w-md w-full bg-[#edf6f1] border border-[#cde6d7] shadow-xl rounded-xl p-4 flex items-start justify-between gap-3 animate-in fade-in slide-in-from-bottom-5 duration-300">
-          <div className="space-y-0.5">
-            <h4 className="text-sm font-bold text-[#176a43]">
-              {toastNotification.title}
-            </h4>
-            <p className="text-xs text-[#176a43]/90 leading-relaxed">
-              {toastNotification.message}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setToastNotification(null)}
-            className="text-[#176a43]/60 hover:text-[#176a43] p-1 rounded-lg transition cursor-pointer"
-            title="Tutup notifikasi"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
       {/* ======================================================== */}
       {/* MODAL F07: Beri Tugas dengan Validasi                    */}
       {/* ======================================================== */}
