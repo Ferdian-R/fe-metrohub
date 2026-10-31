@@ -16,6 +16,9 @@ import { InternTasksPage } from './modules/magang/pages/InternTasksPage';
 import { InternProfilePage } from './modules/magang/pages/InternProfilePage';
 import { AdminUsersPage } from './modules/pengaturan/pages/AdminUsersPage';
 import { AdminLocationPage } from './modules/pengaturan/pages/AdminLocationPage';
+import { CategoriesPage } from './modules/keuangan/pages/CategoriesPage';
+import { TransactionsPage } from './modules/keuangan/pages/TransactionsPage';
+import { FinanceSummaryPage } from './modules/keuangan/pages/FinanceSummaryPage';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -71,6 +74,9 @@ export default function App() {
               <Route path="admin/magang/penugasan" element={<AdminTasksPage />} />
               <Route path="admin/pengaturan/pengguna" element={<AdminUsersPage />} />
               <Route path="admin/pengaturan/lokasi" element={<AdminLocationPage />} />
+              <Route path="admin/keuangan/transaksi" element={<TransactionsPage />} />
+              <Route path="admin/keuangan/kategori" element={<CategoriesPage />} />
+              <Route path="admin/keuangan/ringkasan" element={<FinanceSummaryPage />} />
 
               {/* Portal Anak Magang Routes (M-01) */}
               <Route path="magang/dashboard" element={<InternDashboardPage />} />
