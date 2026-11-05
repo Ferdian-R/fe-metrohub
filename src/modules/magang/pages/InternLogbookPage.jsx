@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../../context/ToastContext';
 import {
@@ -7,82 +7,122 @@ import {
   Lock,
   ArrowRight,
   ShieldCheck,
+  Loader2,
 } from 'lucide-react';
+import { magangService } from '../services/magangService';
 
 export const InternLogbookPage = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
 
-  // Mode Skenario / State Logbook (sesuai Figma M-03)
-  // 'saved': Tersimpan 12.30 WIB (Desktop default di Image 1)
-  // 'draft': Draf belum disimpan (08.12 WIB)
-  // 'locked': Terkunci setelah check-out (17.05 WIB)
-  // 'error_network': Simulasi gagal simpan (Koneksi terputus)
-  const [logbookState, setLogbookState] = useState('saved');
-
-  // Input state pekerjaan hari ini
-  const [isiPekerjaan, setIsiPekerjaan] = useState(
-    'Menyelesaikan struktur tabel laporan dan memperbaiki validasi filter periode pada halaman admin.'
-  );
-
-  const [validationError, setValidationError] = useState('');
+  const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [savedTime, setSavedTime] = useState('12.30 WIB');
+  const [error, setError] = useState(null);
 
-  // Handler Simpan Logbook dengan Validasi (MG04 & Validasi spasi)
-  const handleSaveLogbook = () => {
+  // Status Kehadiran Hari Ini
+  const [todayAttendance, setTodayAttendance] = useState(null);
+
+  // Form Logbook Hari Ini
+  const [isiPekerjaan, setIsiPekerjaan] = useState('');
+  const [savedTime, setSavedTime] = useState(null);
+  const [validationError, setValidationError] = useState('');
+
+  // Riwayat Logbook
+  const [riwayatList, setRiwayatList] = useState([]);
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [attRes, logbookTodayRes, historyRes] = await Promise.allSettled([
+        magangService.getTodayAttendance(),
+        magangService.getTodayLogbook(),
+        magangService.getMyLogbooks(),
+      ]);
+
+      if (attRes.status === 'fulfilled') {
+        setTodayAttendance(attRes.value?.data || null);
+      }
+      if (logbookTodayRes.status === 'fulfilled' && logbookTodayRes.value?.data) {
+        const lb = logbookTodayRes.value.data;
+        setIsiPekerjaan(lb.isi || '');
+        if (lb.updated_at) {
+          const d = new Date(lb.updated_at);
+          setSavedTime(
+            d.toLocaleTimeString('id-ID', {
+              timeZone: 'Asia/Jakarta',
+              hour: '2-digit',
+              minute: '2-digit',
+            }) + ' WIB'
+          );
+        }
+      }
+      if (historyRes.status === 'fulfilled') {
+        setRiwayatList(historyRes.value?.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to load logbook data:', err);
+      setError(err?.message || 'Gagal memuat data logbook');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Handler Simpan Logbook
+  const handleSaveLogbook = async () => {
     setValidationError('');
 
-    // Validasi kosong atau hanya spasi (sesuai varian baris bawah Figma)
     if (!isiPekerjaan || isiPekerjaan.trim() === '') {
       setValidationError('Isi pekerjaan hari ini; spasi saja tidak dapat disimpan.');
       return;
     }
 
-    // Jika skenario sedang dalam simulasi gagal simpan
-    if (logbookState === 'error_network') {
+    try {
       setIsSaving(true);
-      setTimeout(() => {
-        setIsSaving(false);
-        showToast({
-          title: 'Gagal menyimpan logbook',
-          message: 'Koneksi terputus. Catatan Anda tetap aman di editor.',
-          type: 'error',
-        });
-      }, 600);
-      return;
-    }
+      await magangService.saveTodayLogbook(isiPekerjaan.trim());
 
-    // Simulasi penyimpanan berhasil
-    setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
-      setLogbookState('saved');
-      setSavedTime('12.30 WIB');
+      const now = new Date();
+      setSavedTime(
+        now.toLocaleTimeString('id-ID', {
+          timeZone: 'Asia/Jakarta',
+          hour: '2-digit',
+          minute: '2-digit',
+        }) + ' WIB'
+      );
+
       showToast({
         title: 'Logbook berhasil disimpan',
-        message: 'Catatan pekerjaan hari ini telah tersimpan dan check-out terbuka.',
+        message: 'Catatan pekerjaan hari ini telah tersimpan.',
       });
-    }, 500);
+
+      await fetchData();
+    } catch (err) {
+      console.error('Failed to save logbook:', err);
+      showToast({
+        title: 'Gagal menyimpan logbook',
+        message: err?.message || 'Terjadi kesalahan sistem saat menyimpan logbook.',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  // Riwayat logbook 3 hari sebelumnya (sesuai Figma M-03 Image 1)
-  const riwayatList = [
-    {
-      tanggal: '19 Okt 2026',
-      catatan: 'Menyusun pengujian komponen filter dan memperbaiki tampilan mobile.',
-    },
-    {
-      tanggal: '18 Okt 2026',
-      catatan: 'Audit aksesibilitas formulir dan label kontrol.',
-    },
-    {
-      tanggal: '17 Okt 2026',
-      catatan: 'Melanjutkan integrasi data dummy untuk halaman laporan.',
-    },
-  ];
+  const formatDateToID = (dateStr) => {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+  };
 
-  const isLocked = logbookState === 'locked';
+  const isCheckedIn = Boolean(todayAttendance?.sudah_checkin);
+  const isCheckedOut = Boolean(todayAttendance?.sudah_checkout);
+  const isLocked = !isCheckedIn || isCheckedOut;
 
   return (
     <div className="space-y-6 w-full pb-12 font-sans">
@@ -91,311 +131,159 @@ export const InternLogbookPage = () => {
         <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight font-lexend">
           Logbook
         </h1>
-        <p className="text-xs md:text-sm text-slate-500 mt-1 font-source-sans">
+        <p className="text-xs md:text-sm text-slate-500 mt-1">
           Catatan pekerjaan pribadi selama masa magang.
         </p>
       </div>
 
-      {/* Grid Konten: Editor Logbook (Kiri 2 Kolom) & Riwayat + Status (Kanan 1 Kolom) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* Kolom Kiri: Form Editor Logbook */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6 md:p-8 shadow-2xs space-y-5">
-          {/* Header Card Logbook */}
-          <div className="flex items-start justify-between pb-3 border-b border-slate-100">
-            <div>
-              <p className="text-[11px] font-bold tracking-wider text-slate-400 uppercase font-source-sans">
-                HARI INI
-              </p>
-              <h2 className="text-lg md:text-xl font-bold text-slate-900 font-lexend mt-0.5">
-                Selasa, 20 Oktober 2026
-              </h2>
+      {/* Error Alert */}
+      {error && (
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs md:text-sm flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={fetchData}
+            className="px-3 py-1 bg-white border border-rose-300 rounded text-xs font-semibold"
+          >
+            Coba lagi
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="py-20 text-center text-slate-400">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto text-[#17362f] mb-3" />
+          <p className="text-sm">Memuat catatan logbook...</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          {/* Editor Logbook (Kiri 2 Kolom) */}
+          <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6 md:p-8 shadow-2xs space-y-6">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <span className="text-xs font-bold text-[#17362f] tracking-wide uppercase">
+                Catatan Hari Ini
+              </span>
+              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                isCheckedOut
+                  ? 'bg-slate-100 text-slate-600'
+                  : savedTime
+                  ? 'bg-[#e7f5ec] text-[#206941]'
+                  : 'bg-amber-50 text-amber-700'
+              }`}>
+                {isCheckedOut
+                  ? 'Terkunci (Sudah Check-out)'
+                  : savedTime
+                  ? `Tersimpan · ${savedTime}`
+                  : 'Belum disimpan'}
+              </span>
             </div>
 
-            {/* Badge Status Logbook */}
-            <div>
-              {logbookState === 'saved' && (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#e7f5ec] text-[#176a43] border border-[#c6e9d4] font-source-sans">
-                  {savedTime ? ('Tersimpan · ' + savedTime) : 'Tersimpan'}
-                </span>
+            {/* Warning jika belum check-in */}
+            {!isCheckedIn && (
+              <div className="p-3.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center justify-between">
+                <span>Lakukan check-in terlebih dahulu sebelum dapat mengisi logbook hari ini.</span>
+                <button
+                  type="button"
+                  onClick={() => navigate('/magang/absensi')}
+                  className="font-bold underline hover:text-amber-900 ml-2"
+                >
+                  Ke Absensi
+                </button>
+              </div>
+            )}
+
+            {/* Warning jika sudah check-out */}
+            {isCheckedOut && (
+              <div className="p-3.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 text-xs flex items-center gap-2">
+                <Lock className="w-4 h-4 text-slate-500 shrink-0" />
+                <span>Logbook terkunci dan tidak dapat diubah setelah melakukan check-out.</span>
+              </div>
+            )}
+
+            {/* Textarea Pekerjaan */}
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-slate-700">
+                Pekerjaan yang Diselesaikan Hari Ini
+              </label>
+              <textarea
+                rows={6}
+                disabled={isLocked}
+                value={isiPekerjaan}
+                onChange={(e) => {
+                  setIsiPekerjaan(e.target.value);
+                  if (validationError) setValidationError('');
+                }}
+                placeholder="Rincikan modul, fitur, atau riset yang Anda kerjakan hari ini..."
+                className={`w-full p-3.5 rounded-lg border text-xs md:text-sm text-slate-900 focus:outline-none transition resize-none ${
+                  isLocked ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : 'bg-white'
+                } ${
+                  validationError
+                    ? 'border-rose-500 bg-rose-50/20'
+                    : 'border-slate-300 focus:ring-1 focus:ring-[#17362f] focus:border-[#17362f]'
+                }`}
+              />
+              {validationError && (
+                <p className="text-[11px] text-rose-600 mt-1">{validationError}</p>
               )}
-              {logbookState === 'draft' && (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#fef9ee] text-[#b45309] border border-[#fde68a] font-source-sans">
-                  Belum disimpan
-                </span>
-              )}
-              {logbookState === 'locked' && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200 font-source-sans">
-                  <Lock className="w-3 h-3" />
-                  <span>Terkunci</span>
-                </span>
-              )}
-              {logbookState === 'error_network' && (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#fef2f2] text-[#b91c1c] border border-[#fecaca] font-source-sans">
-                  Gagal disimpan
-                </span>
+            </div>
+
+            {/* Submit Action */}
+            <div className="pt-2 flex items-center justify-between">
+              <button
+                type="button"
+                disabled={isLocked || isSaving}
+                onClick={handleSaveLogbook}
+                className="px-6 py-2.5 bg-[#17362f] hover:bg-[#122b25] disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs md:text-sm font-semibold rounded-lg shadow-xs transition flex items-center gap-2"
+              >
+                {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                <span>Simpan Catatan</span>
+              </button>
+
+              {savedTime && !isCheckedOut && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/magang/absensi')}
+                  className="text-xs font-semibold text-[#17362f] hover:underline flex items-center gap-1"
+                >
+                  <span>Lanjut ke Check-out</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
               )}
             </div>
           </div>
 
-          {/* Form Textarea Pekerjaan Hari Ini */}
-          <div className="space-y-1.5">
-            <label
-              htmlFor="logbook-input"
-              className="block text-xs font-semibold text-slate-700 font-source-sans"
-            >
-              Pekerjaan hari ini
-            </label>
+          {/* Kolom Kanan: Riwayat Logbook */}
+          <div className="bg-white rounded-xl border border-slate-200 p-6 md:p-7 shadow-2xs space-y-5">
+            <h3 className="text-base font-semibold text-slate-900 font-lexend">
+              Riwayat Logbook
+            </h3>
 
-            <textarea
-              id="logbook-input"
-              rows={5}
-              readOnly={isLocked || isSaving}
-              value={isiPekerjaan}
-              onChange={(e) => {
-                setIsiPekerjaan(e.target.value);
-                if (validationError) setValidationError('');
-              }}
-              placeholder="Tuliskan ringkasan aktivitas, progres tugas, atau kendala pekerjaan hari ini..."
-              className={
-                'w-full p-4 rounded-xl text-sm leading-relaxed transition font-source-sans ' +
-                (validationError
-                  ? 'border border-rose-400 bg-rose-50/20 text-slate-900 focus:outline-none focus:ring-1 focus:ring-rose-400'
-                  : isLocked
-                  ? 'bg-slate-50 border border-slate-200 text-slate-700 cursor-not-allowed select-text'
-                  : 'bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f]')
-              }
-            />
-
-            {/* Pesan Validasi Error (Kosong / Hanya Spasi) */}
-            {validationError ? (
-              <p className="text-xs font-medium text-rose-600 font-source-sans pt-1">
-                {validationError}
+            {riwayatList.length === 0 ? (
+              <p className="text-xs text-slate-400 py-4 text-center">
+                Belum ada riwayat logbook tersimpan.
               </p>
             ) : (
-              <p className="text-xs text-slate-500 font-source-sans pt-0.5">
-                {isLocked
-                  ? 'Disimpan 12.30 WIB.'
-                  : logbookState === 'saved'
-                  ? 'Disimpan 12.30 WIB. Masih dapat diubah sebelum check-out.'
-                  : 'Perubahan belum disimpan. Catatan dapat diubah sebelum check-out.'}
-              </p>
-            )}
-          </div>
-
-          {/* Banner Informasi Sesuai State */}
-          {renderStateBanner()}
-
-          {/* Tombol Aksi di Bagian Bawah */}
-          <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3">
-            {/* Tombol Kembali ke Absensi */}
-            <button
-              type="button"
-              onClick={() => navigate('/magang/absensi')}
-              className="px-5 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 active:scale-[0.99] text-slate-800 text-xs font-semibold rounded-lg shadow-2xs transition cursor-pointer text-center"
-            >
-              Kembali ke Absensi
-            </button>
-
-            {/* Tombol Simpan / Aksi Utama */}
-            {!isLocked && (
-              <>
-                {logbookState === 'saved' ? (
-                  <>
-                    <button
-                      type="button"
-                      disabled={isSaving}
-                      onClick={handleSaveLogbook}
-                      className="px-5 py-2.5 bg-[#4a7368] hover:bg-[#3b6157] active:scale-[0.99] text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer text-center"
-                    >
-                      {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigate('/magang/absensi')}
-                      className="px-5 py-2.5 bg-[#17362f] hover:bg-[#122b25] active:scale-[0.99] text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      <span>Lanjut Check-out</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  </>
-                ) : logbookState === 'error_network' ? (
-                  <button
-                    type="button"
-                    disabled={isSaving}
-                    onClick={handleSaveLogbook}
-                    className="px-5 py-2.5 bg-[#17362f] hover:bg-[#122b25] active:scale-[0.99] text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer text-center"
-                  >
-                    {isSaving ? 'Menyimpan...' : 'Coba Simpan Lagi'}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={isSaving}
-                    onClick={handleSaveLogbook}
-                    className="px-5 py-2.5 bg-[#17362f] hover:bg-[#122b25] active:scale-[0.99] text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer text-center"
-                  >
-                    {isSaving ? 'Menyimpan...' : 'Simpan Logbook'}
-                  </button>
-                )}
-              </>
+              <div className="divide-y divide-slate-100 max-h-[500px] overflow-y-auto">
+                {riwayatList.map((item) => (
+                  <div key={item.id} className="py-3.5 first:pt-0 last:pb-0 space-y-1">
+                    <span className="text-[11px] font-bold text-slate-400 block uppercase">
+                      {formatDateToID(item.tanggal)}
+                    </span>
+                    <p className="text-xs text-slate-700 leading-relaxed line-clamp-3">
+                      {item.isi}
+                    </p>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
-
-        {/* Kolom Kanan: Card Riwayat Terbaru (Figma M-03 Image 1) & Status Hari Ini */}
-        <div className="space-y-6">
-          {/* Card 1: Riwayat Terbaru */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs space-y-4">
-            <div className="pb-3 border-b border-slate-100">
-              <h3 className="text-base font-bold text-slate-900 font-lexend">
-                Riwayat terbaru
-              </h3>
-            </div>
-
-            <div className="divide-y divide-slate-100">
-              {riwayatList.map((item, idx) => (
-                <div key={idx} className="py-3.5 first:pt-0 last:pb-0 space-y-1">
-                  <p className="text-xs font-bold text-slate-800 font-source-sans">
-                    {item.tanggal}
-                  </p>
-                  <p className="text-xs text-slate-600 leading-relaxed font-source-sans">
-                    {item.catatan}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Card 2: Status Hari Ini (Kompak) */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs space-y-4">
-            <div className="pb-3 border-b border-slate-100">
-              <h3 className="text-base font-bold text-slate-900 font-lexend">
-                Status hari ini
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5 font-source-sans">
-                Selasa, 20 Oktober 2026
-              </p>
-            </div>
-
-            <div className="space-y-3 text-xs font-source-sans">
-              <div className="flex items-center justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-500">Status kerja</span>
-                <span className="font-semibold text-slate-800">On-site</span>
-              </div>
-              <div className="flex items-center justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-500">Check-in</span>
-                <span className="font-bold text-slate-900">08.12 WIB</span>
-              </div>
-              <div className="flex items-center justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-500">Logbook</span>
-                <span className="font-bold text-slate-900">
-                  {isLocked
-                    ? 'Tersimpan · 12.30 WIB'
-                    : logbookState === 'saved'
-                    ? 'Tersimpan · 12.30 WIB'
-                    : 'Belum disimpan'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-1">
-                <span className="text-slate-500">Check-out</span>
-                <span className="font-semibold text-slate-800">
-                  {isLocked ? '17.05 WIB' : 'Belum dilakukan'}
-                </span>
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-slate-100 flex items-center gap-2 text-slate-400 text-[11px] font-source-sans">
-              <ShieldCheck className="w-4 h-4 text-slate-400 shrink-0" />
-              <span>Demo · data contoh</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
-
-  // Helper Banner Info berdasarkan State
-  function renderStateBanner() {
-    if (isSaving) {
-      return (
-        <div className="bg-[#edf6f1] border border-[#cde6d7] rounded-xl p-3.5 flex items-start gap-3">
-          <div className="w-4 h-4 border-2 border-[#176a43] border-t-transparent rounded-full animate-spin shrink-0 mt-0.5" />
-          <div>
-            <h4 className="text-xs font-bold text-[#176a43] font-source-sans">
-              Menyimpan logbook...
-            </h4>
-            <p className="text-[11px] text-[#176a43]/90 mt-0.5 font-source-sans">
-              Tunggu sampai status penyimpanan muncul.
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    if (logbookState === 'error_network') {
-      return (
-        <div className="bg-[#fef2f2] border border-[#fecaca] rounded-xl p-3.5 flex items-start gap-3">
-          <AlertCircle className="w-4 h-4 text-[#b91c1c] shrink-0 mt-0.5" />
-          <div>
-            <h4 className="text-xs font-bold text-[#b91c1c] font-source-sans">
-              Logbook belum tersimpan
-            </h4>
-            <p className="text-[11px] text-[#991b1b] mt-0.5 font-source-sans">
-              Koneksi terputus. Catatan Anda tetap ada di editor.
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    if (logbookState === 'draft') {
-      return (
-        <div className="bg-[#edf6f1] border border-[#cde6d7] rounded-xl p-3.5 flex items-start gap-3">
-          <CheckCircle2 className="w-4 h-4 text-[#176a43] shrink-0 mt-0.5" />
-          <div>
-            <h4 className="text-xs font-bold text-[#176a43] font-source-sans">
-              Check-in tercatat · 08.12 WIB
-            </h4>
-            <p className="text-[11px] text-[#176a43]/90 mt-0.5 font-source-sans">
-              Simpan logbook ini untuk membuka langkah check-out.
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    if (logbookState === 'saved') {
-      return (
-        <div className="bg-[#edf6f1] border border-[#cde6d7] rounded-xl p-3.5 flex items-start gap-3">
-          <CheckCircle2 className="w-4 h-4 text-[#176a43] shrink-0 mt-0.5" />
-          <div>
-            <h4 className="text-xs font-bold text-[#176a43] font-source-sans">
-              Check-out kini tersedia
-            </h4>
-            <p className="text-[11px] text-[#176a43]/90 mt-0.5 font-source-sans">
-              Ambil foto dan lokasi baru di halaman Absensi.
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    if (logbookState === 'locked') {
-      return (
-        <div className="bg-[#f0f4f8] border border-slate-200 rounded-xl p-3.5 flex items-start gap-3">
-          <Lock className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" />
-          <div>
-            <h4 className="text-xs font-bold text-slate-800 font-source-sans">
-              Logbook tidak dapat diubah
-            </h4>
-            <p className="text-[11px] text-slate-600 mt-0.5 font-source-sans">
-              Check-out telah tercatat pada 17.05 WIB.
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    return null;
-  }
 };
+
+export default InternLogbookPage;

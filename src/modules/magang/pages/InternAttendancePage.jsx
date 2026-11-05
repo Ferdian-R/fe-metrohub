@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../../context/ToastContext';
 import {
@@ -8,75 +8,266 @@ import {
   CheckCircle2,
   AlertTriangle,
   ShieldCheck,
-  User,
+  Loader2,
+  AlertCircle,
   ArrowRight,
 } from 'lucide-react';
+import { magangService } from '../services/magangService';
 
 export const InternAttendancePage = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
 
-  const [selectedScenario, setSelectedScenario] = useState('normal');
-  const [flowState, setFlowState] = useState('checkout_ready');
-  const [hasPhoto, setHasPhoto] = useState(true);
-  const [hasLocation, setHasLocation] = useState(true);
-  const [isCapturingPhoto, setIsCapturingPhoto] = useState(false);
-  const [isRefreshingLocation, setIsRefreshingLocation] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const [attendanceRecord, setAttendanceRecord] = useState({
-    statusKerja: 'On-site',
-    checkInTime: '08.12 WIB',
-    logbookTime: 'Tersimpan · 12.30 WIB',
-    checkOutTime: 'Belum dilakukan',
-  });
-  const handleTakePhoto = () => {
-    setIsCapturingPhoto(true);
-    setTimeout(() => {
-      setHasPhoto(true);
-      setIsCapturingPhoto(false);
-      showToast({
-        title: 'Foto wajah siap',
-        message: 'Foto demo berhasil diambil dan tervalidasi.',
+  // Status API Hari Ini
+  const [todayData, setTodayData] = useState(null);
+
+  // Media & Lokasi States
+  const [photoBlob, setPhotoBlob] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [coords, setCoords] = useState(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState(null);
+
+  // Video / Kamera streaming state
+  const videoRef = useRef(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const streamRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  const fetchTodayStatus = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await magangService.getTodayAttendance();
+      setTodayData(res?.data || null);
+    } catch (err) {
+      console.error('Failed to load today attendance:', err);
+      setError(err?.message || 'Gagal memuat status kehadiran hari ini');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTodayStatus();
+  }, [fetchTodayStatus]);
+
+  // Cleanup camera stream
+  const stopCameraStream = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setIsCameraActive(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      stopCameraStream();
+    };
+  }, []);
+
+  // Request GPS Location
+  const requestCurrentLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation tidak didukung pada browser ini.');
+      return;
+    }
+
+    setLocationLoading(true);
+    setLocationError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCoords({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+        });
+        setLocationLoading(false);
+      },
+      (err) => {
+        console.warn('Geolocation error:', err);
+        setLocationError('Gagal mendeteksi lokasi GPS. Pastikan izin lokasi aktif.');
+        setLocationLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+    );
+  }, []);
+
+  useEffect(() => {
+    requestCurrentLocation();
+  }, [requestCurrentLocation]);
+
+  // Start Camera Stream
+  const handleStartCamera = async () => {
+    try {
+      stopCameraStream();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
       });
-    }, 500);
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+      setIsCameraActive(true);
+    } catch (err) {
+      console.warn('Webcam stream failed, fallback to file input:', err);
+      if (fileInputRef.current) {
+        fileInputRef.current.click();
+      }
+    }
   };
 
-  const handleRefreshLocation = () => {
-    setIsRefreshingLocation(true);
-    setTimeout(() => {
-      setHasLocation(true);
-      setIsRefreshingLocation(false);
+  // Capture Photo from Video Canvas
+  const handleCaptureFromVideo = () => {
+    if (!videoRef.current) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth || 640;
+    canvas.height = videoRef.current.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          setPhotoBlob(blob);
+          setPhotoPreview(URL.createObjectURL(blob));
+          stopCameraStream();
+          showToast({
+            title: 'Foto wajah siap',
+            message: 'Foto berhasil diambil dan siap dikirim.',
+          });
+        }
+      },
+      'image/jpeg',
+      0.75
+    );
+  };
+
+  // Capture Photo from File Input fallback
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Compress using canvas
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (re) => {
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxW = 640;
+        const scale = maxW / img.width;
+        canvas.width = maxW;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              setPhotoBlob(blob);
+              setPhotoPreview(URL.createObjectURL(blob));
+              showToast({
+                title: 'Foto wajah siap',
+                message: 'Foto siap dikirim untuk absensi.',
+              });
+            }
+          },
+          'image/jpeg',
+          0.75
+        );
+      };
+      img.src = re.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Submit Check-in or Check-out
+  const handleSendAttendance = async (actionType) => {
+    if (!photoBlob) {
       showToast({
-        title: 'Lokasi diperbarui',
-        message: 'Koordinat GPS tervalidasi di dalam radius kantor.',
+        title: 'Foto wajah diperlukan',
+        message: 'Silakan ambil foto wajah terlebih dahulu.',
       });
-    }, 500);
+      return;
+    }
+
+    if (!coords) {
+      showToast({
+        title: 'Lokasi GPS diperlukan',
+        message: 'Aktifkan izin lokasi browser untuk memverifikasi posisi Anda.',
+      });
+      requestCurrentLocation();
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const formData = new FormData();
+      formData.append('foto', photoBlob, 'foto.jpg');
+      formData.append('latitude', coords.latitude);
+      formData.append('longitude', coords.longitude);
+
+      if (actionType === 'checkin') {
+        await magangService.checkIn(formData);
+        showToast({
+          title: 'Check-in berhasil',
+          message: 'Kehadiran Anda telah tercatat. Silakan melanjutkan isi logbook hari ini.',
+        });
+      } else {
+        await magangService.checkOut(formData);
+        showToast({
+          title: 'Check-out berhasil',
+          message: 'Absensi hari ini telah lengkap.',
+        });
+      }
+
+      setPhotoBlob(null);
+      setPhotoPreview(null);
+      await fetchTodayStatus();
+    } catch (err) {
+      console.error('Attendance submit error:', err);
+      showToast({
+        title: 'Gagal mengirim absensi',
+        message: err?.message || 'Terjadi kesalahan sistem',
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleSaveCheckIn = () => {
-    setAttendanceRecord((prev) => ({
-      ...prev,
-      checkInTime: '08.12 WIB',
-    }));
-    setFlowState('checkin_done');
-    showToast({
-      title: 'Check-in berhasil disimpan',
-      message: 'Kehadiran 08.12 WIB tercatat. Lanjutkan mengisi logbook hari ini.',
-    });
+  const formatDateLong = () => {
+    const d = new Date();
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
   };
 
-  const handleSaveCheckOut = () => {
-    setAttendanceRecord((prev) => ({
-      ...prev,
-      checkOutTime: '17.05 WIB',
-    }));
-    setFlowState('completed');
-    showToast({
-      title: 'Check-out berhasil disimpan',
-      message: 'Absensi hari ini lengkap dan telah tervalidasi.',
-    });
+  const formatTimeWIB = (timeStr) => {
+    if (!timeStr) return null;
+    try {
+      const d = new Date(timeStr);
+      if (isNaN(d.getTime())) return timeStr;
+      return d.toLocaleTimeString('id-ID', {
+        timeZone: 'Asia/Jakarta',
+        hour: '2-digit',
+        minute: '2-digit',
+      }) + ' WIB';
+    } catch {
+      return timeStr;
+    }
   };
-  const isBlockedByScenario = !hasPhoto || !hasLocation;
+
+  const statusKerja = todayData?.status_kerja === 'REMOTE' ? 'Remote' : 'On-site';
+  const checkinTime = formatTimeWIB(todayData?.absensi?.jam_checkin);
+  const checkoutTime = formatTimeWIB(todayData?.absensi?.jam_checkout);
 
   return (
     <div className="space-y-6 w-full pb-12 font-sans">
@@ -85,670 +276,327 @@ export const InternAttendancePage = () => {
         <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight font-lexend">
           Absensi
         </h1>
-        <p className="text-xs md:text-sm text-slate-500 mt-1 font-source-sans">
-          Selasa, 20 Oktober 2026 · {attendanceRecord.statusKerja}
+        <p className="text-xs md:text-sm text-slate-500 mt-1">
+          {formatDateLong()} · {statusKerja}
         </p>
       </div>
 
-      {/* Grid Utama: Form Absensi (Kiri 2 Kolom) & Status Hari Ini (Kanan 1 Kolom) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* Kolom Kiri: Form Kartu Absensi */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6 md:p-8 shadow-2xs space-y-6">
-          {/* Stepper Indikator Langkah */}
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div className="flex items-center gap-2 text-xs font-source-sans">
-              <span
-                className={`font-semibold ${
-                  flowState === 'checkin_ready'
-                    ? 'text-[#17362f]'
-                    : 'text-slate-400'
-                }`}
-              >
-                1 · Check-in
-              </span>
-              <span className="text-slate-300">/</span>
-              <span
-                className={`font-semibold ${
-                  flowState === 'checkin_done'
-                    ? 'text-[#17362f]'
-                    : 'text-slate-400'
-                }`}
-              >
-                2 · Logbook
-              </span>
-              <span className="text-slate-300">/</span>
-              <span
-                className={`font-semibold ${
-                  flowState === 'checkout_ready' || flowState === 'completed'
-                    ? 'text-[#17362f]'
-                    : 'text-slate-400'
-                }`}
-              >
-                3 · Check-out
-              </span>
-            </div>
-
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 font-source-sans">
-              Hari ini
-            </span>
+      {/* Error Alert */}
+      {error && (
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs md:text-sm flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+            <span>{error}</span>
           </div>
-
-          {/* STATE 1: CHECK-IN SIAP */}
-          {flowState === 'checkin_ready' && (
-            <div className="space-y-5 animate-in fade-in duration-200">
-              <h2 className="text-xl font-bold text-slate-900 font-lexend">
-                Check-in
-              </h2>
-
-              {/* Area Preview Foto */}
-              <div className="bg-[#f0f3f1] border border-slate-200 rounded-xl p-8 flex flex-col items-center justify-center min-h-[220px] text-center">
-                {hasPhoto ? (
-                  <div className="flex flex-col items-center space-y-2">
-                    <div className="w-16 h-16 rounded-full bg-slate-300 flex items-center justify-center text-slate-600 shadow-inner">
-                      <User className="w-9 h-9" />
-                    </div>
-                    <p className="text-xs font-bold text-slate-800 tracking-wide font-source-sans mt-2">
-                      DEMO · foto baru 08.11
-                    </p>
-                    <p className="text-[11px] text-slate-500 font-source-sans">
-                      Ilustrasi, bukan bukti absensi nyata
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center space-y-2 text-slate-400">
-                    <Camera className="w-12 h-12 stroke-[1.5]" />
-                    <p className="text-xs font-bold text-slate-700 font-source-sans mt-2">
-                      Ambil foto wajah untuk check-in
-                    </p>
-                    <p className="text-[11px] text-slate-400 font-source-sans">
-                      Simulasi kamera
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Tombol Aksi Kamera & Lokasi */}
-              <div className="space-y-1.5">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <button
-                    type="button"
-                    onClick={handleTakePhoto}
-                    disabled={isCapturingPhoto}
-                    className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 text-xs font-semibold rounded-lg flex items-center gap-2 shadow-2xs transition active:scale-95 cursor-pointer disabled:opacity-50"
-                  >
-                    <Camera className="w-3.5 h-3.5 text-slate-600" />
-                    <span>{hasPhoto ? 'Ambil Ulang Foto' : 'Ambil Foto'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleRefreshLocation}
-                    disabled={isRefreshingLocation}
-                    className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 text-xs font-semibold rounded-lg flex items-center gap-2 shadow-2xs transition active:scale-95 cursor-pointer disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${isRefreshingLocation ? 'animate-spin' : ''}`} />
-                    <span>Perbarui Lokasi</span>
-                  </button>
-                </div>
-                <p className="text-[11px] text-slate-500 font-source-sans">
-                  Ambil foto wajah langsung dari kamera, lalu perbarui lokasi.
-                </p>
-              </div>
-
-              {/* Box Kondisi Lokasi & Pesan Skenario */}
-              {renderScenarioFeedback()}
-
-              {/* Tombol Simpan Check-in */}
-              <div className="pt-2">
-                <button
-                  type="button"
-                  disabled={isBlockedByScenario}
-                  onClick={handleSaveCheckIn}
-                  className={`w-full py-3 px-4 rounded-xl text-sm font-semibold transition shadow-sm ${
-                    isBlockedByScenario
-                      ? 'bg-[#c1d1cb] text-white cursor-not-allowed'
-                      : 'bg-[#17362f] hover:bg-[#122b25] active:scale-[0.99] text-white cursor-pointer'
-                  }`}
-                >
-                  Simpan Check-in
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* STATE 2: CHECK-IN BERHASIL */}
-          {flowState === 'checkin_done' && (
-            <div className="space-y-6 animate-in fade-in duration-200">
-              <h2 className="text-xl font-bold text-slate-900 font-lexend">
-                Check-in berhasil
-              </h2>
-
-              <div className="bg-[#edf6f1] border border-[#cde6d7] rounded-xl p-4 flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-[#176a43] shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="text-sm font-bold text-[#176a43] font-source-sans">
-                    Check-in tersimpan · 08.12 WIB
-                  </h4>
-                  <p className="text-xs text-[#176a43]/90 mt-0.5 font-source-sans">
-                    Selanjutnya, isi logbook pekerjaan hari ini.
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-3 pt-2">
-                <h3 className="text-base font-bold text-slate-900 font-lexend">
-                  Lengkapi logbook sebelum pulang
-                </h3>
-                <p className="text-xs text-slate-600 font-source-sans leading-relaxed">
-                  Check-out belum tersedia karena logbook hari ini belum disimpan.
-                </p>
-
-                <div className="flex items-center gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => navigate('/magang/logbook')}
-                    className="px-5 py-2.5 bg-[#17362f] hover:bg-[#122b25] active:scale-[0.99] text-white text-xs font-semibold rounded-lg flex items-center gap-2 shadow-xs transition cursor-pointer"
-                  >
-                    <span>Isi Logbook</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled
-                    className="px-5 py-2.5 bg-[#e2ebe6] text-slate-400 text-xs font-semibold rounded-lg cursor-not-allowed"
-                  >
-                    Simpan Check-out
-                  </button>
-                </div>
-
-                <p className="text-[11px] text-slate-500 font-source-sans pt-1">
-                  Simpan logbook untuk membuka check-out. Foto dan lokasi baru tetap diperlukan.
-                </p>
-              </div>
-
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[11px] text-slate-400 font-source-sans">
-                  Demo shortcut: simulasikan logbook selesai disimpan
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setFlowState('checkout_ready')}
-                  className="text-xs font-semibold text-[#17362f] hover:underline cursor-pointer"
-                >
-                  Lanjut ke Check-out &rarr;
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* STATE 3: CHECK-OUT SIAP */}
-          {flowState === 'checkout_ready' && (
-            <div className="space-y-5 animate-in fade-in duration-200">
-              <h2 className="text-xl font-bold text-slate-900 font-lexend">
-                Check-out
-              </h2>
-
-              <div className="bg-[#f0f3f1] border border-slate-200 rounded-xl p-8 flex flex-col items-center justify-center min-h-[220px] text-center">
-                {hasPhoto ? (
-                  <div className="flex flex-col items-center space-y-2">
-                    <div className="w-16 h-16 rounded-full bg-slate-300 flex items-center justify-center text-slate-600 shadow-inner">
-                      <User className="w-9 h-9" />
-                    </div>
-                    <p className="text-xs font-bold text-slate-800 tracking-wide font-source-sans mt-2">
-                      DEMO · foto baru 17.04
-                    </p>
-                    <p className="text-[11px] text-slate-500 font-source-sans">
-                      Ilustrasi, bukan bukti absensi nyata
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center space-y-2 text-slate-400">
-                    <Camera className="w-12 h-12 stroke-[1.5]" />
-                    <p className="text-xs font-bold text-slate-700 font-source-sans mt-2">
-                      Ambil foto baru untuk check-out
-                    </p>
-                    <p className="text-[11px] text-slate-400 font-source-sans">
-                      Simulasi kamera
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <button
-                    type="button"
-                    onClick={handleTakePhoto}
-                    disabled={isCapturingPhoto}
-                    className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 text-xs font-semibold rounded-lg flex items-center gap-2 shadow-2xs transition active:scale-95 cursor-pointer disabled:opacity-50"
-                  >
-                    <Camera className="w-3.5 h-3.5 text-slate-600" />
-                    <span>{hasPhoto ? 'Ambil Ulang Foto' : 'Ambil Foto'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleRefreshLocation}
-                    disabled={isRefreshingLocation}
-                    className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 text-xs font-semibold rounded-lg flex items-center gap-2 shadow-2xs transition active:scale-95 cursor-pointer disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${isRefreshingLocation ? 'animate-spin' : ''}`} />
-                    <span>Perbarui Lokasi</span>
-                  </button>
-                </div>
-                <p className="text-[11px] text-slate-500 font-source-sans">
-                  Gunakan foto dan lokasi baru; bukti check-in tidak dipakai ulang.
-                </p>
-              </div>
-
-              {renderScenarioFeedback()}
-
-              <div className="pt-2">
-                <button
-                  type="button"
-                  disabled={isBlockedByScenario}
-                  onClick={handleSaveCheckOut}
-                  className={`w-full py-3 px-4 rounded-xl text-sm font-semibold transition shadow-sm ${
-                    isBlockedByScenario
-                      ? 'bg-[#c1d1cb] text-white cursor-not-allowed'
-                      : 'bg-[#17362f] hover:bg-[#122b25] active:scale-[0.99] text-white cursor-pointer'
-                  }`}
-                >
-                  Simpan Check-out
-                </button>
-                <p className="text-[11px] text-center text-slate-500 mt-2 font-source-sans">
-                  Ambil foto dan lokasi baru untuk check-out.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* STATE 4: SELESAI */}
-          {flowState === 'completed' && (
-            <div className="space-y-6 animate-in fade-in duration-200">
-              <h2 className="text-xl font-bold text-slate-900 font-lexend">
-                Absensi hari ini lengkap
-              </h2>
-
-              <div className="bg-[#edf6f1] border border-[#cde6d7] rounded-xl p-4 flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-[#176a43] shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="text-sm font-bold text-[#176a43] font-source-sans">
-                    Check-out tersimpan · 17.05 WIB
-                  </h4>
-                  <p className="text-xs text-[#176a43]/90 mt-0.5 font-source-sans">
-                    Seluruh langkah hari ini telah selesai.
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2 pt-2">
-                <h3 className="text-lg font-bold text-slate-900 font-lexend">
-                  Terima kasih, Raka
-                </h3>
-                <p className="text-xs text-slate-700 font-source-sans leading-relaxed">
-                  Check-in 08.12 WIB, logbook 12.30 WIB, dan check-out 17.05 WIB telah tercatat.
-                </p>
-                <p className="text-xs text-slate-500 font-source-sans leading-relaxed">
-                  Absensi tidak dapat dikirim ulang. Logbook hari ini kini hanya dapat dilihat.
-                </p>
-
-                <div className="pt-3">
-                  <button
-                    type="button"
-                    onClick={() => navigate('/magang/logbook')}
-                    className="px-5 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 text-xs font-semibold rounded-lg shadow-2xs transition active:scale-95 cursor-pointer"
-                  >
-                    Lihat Logbook
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          </div>
-
-        {/* Kolom Kanan: Card Status Hari Ini */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs space-y-6">
-          <div className="pb-3 border-b border-slate-100">
-            <h3 className="text-base font-bold text-slate-900 font-lexend">
-              Status hari ini
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5 font-source-sans">
-              Selasa, 20 Oktober 2026
-            </p>
-          </div>
-
-          <div className="space-y-4 text-xs font-source-sans">
-            <div className="flex items-center justify-between py-1 border-b border-slate-50">
-              <span className="text-slate-500">Status kerja</span>
-              <span className="font-semibold text-slate-800">
-                {attendanceRecord.statusKerja}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between py-1 border-b border-slate-50">
-              <span className="text-slate-500">Check-in</span>
-              <span
-                className={`font-semibold ${
-                  attendanceRecord.checkInTime !== 'Belum dilakukan'
-                    ? 'text-slate-900 font-bold'
-                    : 'text-slate-400'
-                }`}
-              >
-                {attendanceRecord.checkInTime}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between py-1 border-b border-slate-50">
-              <span className="text-slate-500">Logbook</span>
-              <span
-                className={`font-semibold ${
-                  attendanceRecord.logbookTime !== 'Belum disimpan'
-                    ? 'text-slate-900 font-bold'
-                    : 'text-slate-400'
-                }`}
-              >
-                {attendanceRecord.logbookTime}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between py-1">
-              <span className="text-slate-500">Check-out</span>
-              <span
-                className={`font-semibold ${
-                  attendanceRecord.checkOutTime !== 'Belum dilakukan'
-                    ? 'text-slate-900 font-bold'
-                    : 'text-slate-400'
-                }`}
-              >
-                {attendanceRecord.checkOutTime}
-              </span>
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-slate-100 space-y-2">
-            <div className="flex items-start gap-2 text-slate-500 text-[11px] leading-relaxed font-source-sans">
-              <ShieldCheck className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-              <span>Demo foto dan lokasi; bukan bukti absensi nyata.</span>
-            </div>
-            <p className="text-[10px] text-slate-400 font-source-sans pl-6">
-              Demo · data contoh
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={fetchTodayStatus}
+            className="px-3 py-1 bg-white border border-rose-300 rounded text-xs font-semibold"
+          >
+            Coba lagi
+          </button>
         </div>
-      </div>
-    </div>
-  );
+      )}
 
-  function renderScenarioFeedback() {
-    if (selectedScenario === 'incomplete') {
-      return (
-        <div className="bg-[#fef9ee] border border-[#fde68a] rounded-xl p-3.5 space-y-2">
-          <div className="flex items-start gap-2.5">
-            <AlertTriangle className="w-4 h-4 text-[#b45309] shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs font-bold text-[#b45309] font-source-sans">
-                Foto dan lokasi belum lengkap
-              </p>
-              <p className="text-[11px] text-[#92400e] leading-relaxed font-source-sans mt-0.5">
-                Ambil foto wajah dan perbarui lokasi sebelum menyimpan absensi.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 pl-6 pt-1">
-            <button
-              type="button"
-              onClick={handleTakePhoto}
-              className="px-3 py-1 bg-white border border-[#fed7aa] text-xs font-semibold text-[#b45309] rounded-lg shadow-2xs hover:bg-amber-50 cursor-pointer"
-            >
-              Ambil Foto
-            </button>
-            <button
-              type="button"
-              onClick={handleRefreshLocation}
-              className="px-3 py-1 bg-white border border-[#fed7aa] text-xs font-semibold text-[#b45309] rounded-lg shadow-2xs hover:bg-amber-50 cursor-pointer"
-            >
-              Perbarui Lokasi
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    if (selectedScenario === 'out_of_radius') {
-      return (
-        <div className="bg-[#fef9ee] border border-[#fde68a] rounded-xl p-3.5 space-y-2">
-          <div className="flex items-start gap-2.5">
-            <AlertTriangle className="w-4 h-4 text-[#b45309] shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs font-bold text-[#b45309] font-source-sans">
-                Di luar radius kantor
-              </p>
-              <p className="text-[11px] text-[#92400e] leading-relaxed font-source-sans mt-0.5">
-                On-site · Jarak 245 m dari kantor, di luar radius 100 m. Mendekatlah lalu perbarui lokasi.
-              </p>
-            </div>
-          </div>
-          <div className="pl-6 pt-1">
-            <button
-              type="button"
-              onClick={() => setSelectedScenario('normal')}
-              className="px-3 py-1 bg-white border border-[#fed7aa] text-xs font-semibold text-[#b45309] rounded-lg shadow-2xs hover:bg-amber-50 cursor-pointer"
-            >
-              Coba Lagi Lokasi
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    if (selectedScenario === 'camera_denied') {
-      return (
-        <div className="bg-[#fef9ee] border border-[#fde68a] rounded-xl p-3.5 space-y-2">
-          <div className="flex items-start gap-2.5">
-            <AlertTriangle className="w-4 h-4 text-[#b45309] shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs font-bold text-[#b45309] font-source-sans">
-                Izin kamera ditolak
-              </p>
-              <p className="text-[11px] text-[#92400e] leading-relaxed font-source-sans mt-0.5">
-                Izinkan kamera melalui pengaturan browser, lalu coba kembali. Foto harus diambil langsung.
-              </p>
-            </div>
-          </div>
-          <div className="pl-6 pt-1">
-            <button
-              type="button"
-              onClick={() => setSelectedScenario('normal')}
-              className="px-3 py-1 bg-white border border-[#fed7aa] text-xs font-semibold text-[#b45309] rounded-lg shadow-2xs hover:bg-amber-50 cursor-pointer"
-            >
-              Coba Lagi Kamera
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    if (selectedScenario === 'location_denied') {
-      return (
-        <div className="bg-[#fef9ee] border border-[#fde68a] rounded-xl p-3.5 space-y-2">
-          <div className="flex items-start gap-2.5">
-            <AlertTriangle className="w-4 h-4 text-[#b45309] shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs font-bold text-[#b45309] font-source-sans">
-                Izin lokasi ditolak
-              </p>
-              <p className="text-[11px] text-[#92400e] leading-relaxed font-source-sans mt-0.5">
-                Aktifkan izin lokasi browser agar koordinat dapat digunakan untuk absensi.
-              </p>
-            </div>
-          </div>
-          <div className="pl-6 pt-1">
-            <button
-              type="button"
-              onClick={() => setSelectedScenario('normal')}
-              className="px-3 py-1 bg-white border border-[#fed7aa] text-xs font-semibold text-[#b45309] rounded-lg shadow-2xs hover:bg-amber-50 cursor-pointer"
-            >
-              Coba Lagi Lokasi
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    if (selectedScenario === 'location_timeout') {
-      return (
-        <div className="bg-[#fef9ee] border border-[#fde68a] rounded-xl p-3.5 space-y-2">
-          <div className="flex items-start gap-2.5">
-            <AlertTriangle className="w-4 h-4 text-[#b45309] shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs font-bold text-[#b45309] font-source-sans">
-                Lokasi belum ditemukan
-              </p>
-              <p className="text-[11px] text-[#92400e] leading-relaxed font-source-sans mt-0.5">
-                Pencarian lokasi melewati batas waktu. Periksa koneksi lalu perbarui lokasi.
-              </p>
-            </div>
-          </div>
-          <div className="pl-6 pt-1">
-            <button
-              type="button"
-              onClick={() => setSelectedScenario('normal')}
-              className="px-3 py-1 bg-white border border-[#fed7aa] text-xs font-semibold text-[#b45309] rounded-lg shadow-2xs hover:bg-amber-50 cursor-pointer"
-            >
-              Coba Lagi Lokasi
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    if (selectedScenario === 'remote_no_coords') {
-      return (
-        <div className="bg-[#fef9ee] border border-[#fde68a] rounded-xl p-3.5 space-y-2">
-          <div className="flex items-start gap-2.5">
-            <AlertTriangle className="w-4 h-4 text-[#b45309] shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs font-bold text-[#b45309] font-source-sans">
-                Remote · koordinat tetap diperlukan
-              </p>
-              <p className="text-[11px] text-[#92400e] leading-relaxed font-source-sans mt-0.5">
-                Salsa Maharani - Foto demo siap. Radius kantor tidak membatasi absensi Remote, tetapi lokasi belum tersedia.
-              </p>
-            </div>
-          </div>
-          <div className="pl-6 pt-1">
-            <button
-              type="button"
-              onClick={() => setSelectedScenario('remote_ready')}
-              className="px-3 py-1 bg-white border border-[#fed7aa] text-xs font-semibold text-[#b45309] rounded-lg shadow-2xs hover:bg-amber-50 cursor-pointer"
-            >
-              Perbarui Lokasi
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    if (selectedScenario === 'remote_ready') {
-      return (
-        <div className="bg-[#e7f5ec] border border-[#c6e9d4] rounded-xl p-3.5 flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="p-2 bg-[#d2edd9] rounded-lg text-[#176a43] shrink-0 mt-0.5">
-              <MapPin className="w-4 h-4" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-[#176a43] font-source-sans">
-                Lokasi Remote tersedia
-              </h4>
-              <p className="text-[11px] text-[#176a43]/90 mt-0.5 font-source-sans">
-                -7.747033, 110.355398 · 245 m dari kantor. Tidak ada penolakan radius untuk Remote.
-              </p>
-            </div>
-          </div>
-          <span className="px-2 py-0.5 bg-white/80 border border-[#b2dfc4] text-[#176a43] rounded text-[11px] font-bold font-source-sans shrink-0">
-            Lokasi valid
+      {/* Masa Magang Berakhir / Belum Mulai Banner */}
+      {todayData && todayData.dalam_masa_magang === false && (
+        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs md:text-sm flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 shrink-0 text-amber-600" />
+          <span>
+            Masa magang Anda belum dimulai atau sudah berakhir. Anda tidak dapat melakukan check-in / check-out untuk hari ini.
           </span>
         </div>
-      );
-    }
+      )}
 
-    if (selectedScenario === 'internship_ended') {
-      return (
-        <div className="bg-[#fef9ee] border border-[#fde68a] rounded-xl p-3.5 space-y-2">
-          <div className="flex items-start gap-2.5">
-            <AlertTriangle className="w-4 h-4 text-[#b45309] shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs font-bold text-[#b45309] font-source-sans">
-                Masa magang telah berakhir
-              </p>
-              <p className="text-[11px] text-[#92400e] leading-relaxed font-source-sans mt-0.5">
-                Dimas Saputra - Periode berakhir 30 September 2026. Absensi reguler tidak tersedia; riwayat tetap tersimpan.
+      {loading ? (
+        <div className="py-20 text-center text-slate-400">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto text-[#17362f] mb-3" />
+          <p className="text-sm">Memeriksa status kehadiran hari ini...</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          {/* Kolom Kiri: Form Kartu Absensi */}
+          <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6 md:p-8 shadow-2xs space-y-6">
+            {/* Header Status Alur */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <span className="text-xs font-bold text-[#17362f] tracking-wide uppercase">
+                {!todayData?.sudah_checkin
+                  ? 'Langkah 1: Check-in Harian'
+                  : !todayData?.sudah_checkout
+                  ? 'Langkah 3: Check-out Harian'
+                  : 'Absensi Hari Ini Lengkap'}
+              </span>
+              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                todayData?.sudah_checkout
+                  ? 'bg-[#e7f5ec] text-[#206941]'
+                  : todayData?.sudah_checkin
+                  ? 'bg-amber-50 text-amber-700'
+                  : 'bg-slate-100 text-slate-600'
+              }`}>
+                {todayData?.sudah_checkout ? 'Selesai' : todayData?.sudah_checkin ? 'Check-in Tercatat' : 'Belum Check-in'}
+              </span>
+            </div>
+
+            {/* Input Foto Wajah */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-700">
+                  Foto Wajah Terkini (Maks. 500 KB)
+                </label>
+                {photoBlob && (
+                  <span className="text-[11px] text-[#206941] font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Foto Siap
+                  </span>
+                )}
+              </div>
+
+              {/* Area Preview Foto / Webcam */}
+              <div className="w-full h-64 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl overflow-hidden flex flex-col items-center justify-center relative">
+                {isCameraActive ? (
+                  <div className="w-full h-full relative bg-black flex items-center justify-center">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute bottom-4 inset-x-0 flex justify-center gap-3">
+                      <button
+                        type="button"
+                        onClick={handleCaptureFromVideo}
+                        className="px-5 py-2 bg-[#17362f] text-white rounded-full text-xs font-semibold shadow-lg hover:bg-[#122b25] flex items-center gap-2"
+                      >
+                        <Camera className="w-4 h-4" />
+                        <span>Ambil Foto</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={stopCameraStream}
+                        className="px-4 py-2 bg-slate-800 text-white rounded-full text-xs font-semibold shadow-lg hover:bg-slate-700"
+                      >
+                        Batal
+                      </button>
+                    </div>
+                  </div>
+                ) : photoPreview ? (
+                  <div className="w-full h-full relative group">
+                    <img
+                      src={photoPreview}
+                      alt="Preview Foto Absensi"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleStartCamera}
+                        className="px-3.5 py-1.5 bg-white text-slate-800 rounded-lg text-xs font-semibold shadow"
+                      >
+                        Foto Ulang
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center p-6 space-y-3">
+                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+                      <Camera className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-700">
+                        Ambil foto wajah menggunakan kamera
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Pastikan pencahayaan cukup dan wajah terlihat jelas
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={handleStartCamera}
+                        className="px-4 py-2 bg-[#17362f] hover:bg-[#122b25] text-white text-xs font-semibold rounded-lg shadow-xs flex items-center gap-2 transition"
+                      >
+                        <Camera className="w-4 h-4" />
+                        <span>Buka Kamera</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg shadow-2xs transition"
+                      >
+                        Upload Foto
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Hidden file input fallback */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="user"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+            </div>
+
+            {/* Input Lokasi GPS */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-700">
+                  Koordinat Lokasi GPS
+                </label>
+                <button
+                  type="button"
+                  onClick={requestCurrentLocation}
+                  disabled={locationLoading}
+                  className="text-xs font-semibold text-[#17362f] hover:underline flex items-center gap-1"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${locationLoading ? 'animate-spin' : ''}`} />
+                  <span>Perbarui Lokasi</span>
+                </button>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600">
+                    <MapPin className="w-4 h-4 text-[#17362f]" />
+                  </div>
+                  <div>
+                    {coords ? (
+                      <>
+                        <p className="font-mono text-xs font-semibold text-slate-800">
+                          {coords.latitude.toFixed(6)}, {coords.longitude.toFixed(6)}
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Akurasi GPS: &plusmn;{Math.round(coords.accuracy || 10)} meter
+                        </p>
+                      </>
+                    ) : locationLoading ? (
+                      <p className="text-xs text-slate-400">Mendeteksi koordinat GPS...</p>
+                    ) : (
+                      <p className="text-xs text-rose-600">{locationError || 'Lokasi belum terdeteksi'}</p>
+                    )}
+                  </div>
+                </div>
+
+                {coords && (
+                  <span className="text-[11px] font-semibold text-[#206941] bg-[#e7f5ec] px-2.5 py-0.5 rounded-full">
+                    GPS Aktif
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+              {!todayData?.sudah_checkin ? (
+                <button
+                  type="button"
+                  disabled={submitting || !todayData?.bisa_checkin}
+                  onClick={() => handleSendAttendance('checkin')}
+                  className="w-full sm:w-auto px-6 py-3 bg-[#17362f] hover:bg-[#122b25] disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs md:text-sm font-semibold rounded-lg shadow-xs transition flex items-center justify-center gap-2"
+                >
+                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <span>Kirim Check-in Hari Ini</span>
+                </button>
+              ) : !todayData?.sudah_checkout ? (
+                <div className="w-full flex flex-col sm:flex-row items-center gap-3">
+                  <button
+                    type="button"
+                    disabled={submitting || !todayData?.bisa_checkout}
+                    onClick={() => handleSendAttendance('checkout')}
+                    className="w-full sm:w-auto px-6 py-3 bg-[#17362f] hover:bg-[#122b25] disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs md:text-sm font-semibold rounded-lg shadow-xs transition flex items-center justify-center gap-2"
+                  >
+                    {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                    <span>Kirim Check-out Hari Ini</span>
+                  </button>
+
+                  {!todayData?.logbook_tersimpan && (
+                    <button
+                      type="button"
+                      onClick={() => navigate('/magang/logbook')}
+                      className="text-xs font-semibold text-[#17362f] hover:underline flex items-center gap-1"
+                    >
+                      <span>Isi logbook terlebih dahulu</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="p-3 bg-[#e7f5ec] text-[#206941] rounded-lg text-xs font-semibold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Anda sudah menyelesaikan seluruh tahapan presensi hari ini.</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Kolom Kanan: Rincian Status Hari Ini */}
+          <div className="bg-white rounded-xl border border-slate-200 p-6 md:p-7 shadow-2xs space-y-6">
+            <h3 className="text-base font-semibold text-slate-900 font-lexend">
+              Status Presensi Hari Ini
+            </h3>
+
+            <div className="space-y-4">
+              {/* Check-in info */}
+              <div className="p-3.5 rounded-lg border border-slate-100 bg-slate-50 flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-bold text-slate-800">Check-in</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {checkinTime ? `Pukul ${checkinTime}` : 'Belum dilakukan'}
+                  </p>
+                </div>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                  todayData?.sudah_checkin ? 'bg-[#e7f5ec] text-[#206941]' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {todayData?.sudah_checkin ? 'Tercatat' : 'Belum'}
+                </span>
+              </div>
+
+              {/* Logbook info */}
+              <div className="p-3.5 rounded-lg border border-slate-100 bg-slate-50 flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-bold text-slate-800">Logbook Harian</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {todayData?.logbook_tersimpan ? 'Catatan tersimpan' : 'Belum diisi'}
+                  </p>
+                </div>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                  todayData?.logbook_tersimpan ? 'bg-[#e7f5ec] text-[#206941]' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {todayData?.logbook_tersimpan ? 'Tersimpan' : 'Belum'}
+                </span>
+              </div>
+
+              {/* Check-out info */}
+              <div className="p-3.5 rounded-lg border border-slate-100 bg-slate-50 flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-bold text-slate-800">Check-out</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {checkoutTime ? `Pukul ${checkoutTime}` : 'Belum dilakukan'}
+                  </p>
+                </div>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                  todayData?.sudah_checkout ? 'bg-[#e7f5ec] text-[#206941]' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {todayData?.sudah_checkout ? 'Tercatat' : 'Belum'}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-[#eef6f2] border border-[#d2e7dc] text-xs text-[#20493e]">
+              <p className="font-bold text-[#17362f]">Ketentuan Presensi</p>
+              <p className="text-[11px] text-[#3d6559] mt-1 leading-relaxed">
+                Urutan wajib harian: Check-in &rarr; Pengisian Logbook &rarr; Check-out. Peserta On-site wajib berada dalam radius kantor.
               </p>
             </div>
           </div>
-          <div className="pl-6 pt-1">
-            <button
-              type="button"
-              onClick={() => navigate('/magang/dashboard')}
-              className="px-3 py-1 bg-white border border-[#fed7aa] text-xs font-semibold text-[#b45309] rounded-lg shadow-2xs hover:bg-amber-50 cursor-pointer"
-            >
-              Lihat Riwayat
-            </button>
-          </div>
         </div>
-      );
-    }
-
-    if (selectedScenario === 'storage_unknown') {
-      return (
-        <div className="bg-[#fef9ee] border border-[#fde68a] rounded-xl p-3.5 space-y-2">
-          <div className="flex items-start gap-2.5">
-            <AlertTriangle className="w-4 h-4 text-[#b45309] shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs font-bold text-[#b45309] font-source-sans">
-                Status penyimpanan belum diketahui
-              </p>
-              <p className="text-[11px] text-[#92400e] leading-relaxed font-source-sans mt-0.5">
-                Jangan kirim ulang untuk menghindari absensi ganda. Periksa apakah check-in sudah tercatat.
-              </p>
-            </div>
-          </div>
-          <div className="pl-6 pt-1">
-            <button
-              type="button"
-              onClick={() => setSelectedScenario('normal')}
-              className="px-3 py-1 bg-white border border-[#fed7aa] text-xs font-semibold text-[#b45309] rounded-lg shadow-2xs hover:bg-amber-50 cursor-pointer"
-            >
-              Muat status terbaru
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="bg-[#e7f5ec] border border-[#c6e9d4] rounded-xl p-3.5 flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className="p-2 bg-[#d2edd9] rounded-lg text-[#176a43] shrink-0 mt-0.5">
-            <MapPin className="w-4 h-4" />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-[#176a43] font-source-sans">
-              Berada dalam radius kantor
-            </h4>
-            <p className="text-[11px] text-[#176a43]/90 mt-0.5 font-source-sans">
-              Jarak 42 m · Radius kantor 100 m {flowState === 'checkout_ready' ? '· Lokasi baru 17.04 WIB' : '· Lokasi baru 08.11 WIB'}
-            </p>
-            <p className="text-[10px] text-[#176a43]/70 font-mono mt-1">
-              Koordinat contoh: -7.747033, 110.355398
-            </p>
-          </div>
-        </div>
-        <span className="px-2 py-0.5 bg-white/80 border border-[#b2dfc4] text-[#176a43] rounded text-[11px] font-bold font-source-sans shrink-0">
-          Lokasi valid
-        </span>
-      </div>
-    );
-  }
+      )}
+    </div>
+  );
 };
+
+export default InternAttendancePage;

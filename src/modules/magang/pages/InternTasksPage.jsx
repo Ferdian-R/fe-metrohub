@@ -1,346 +1,320 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useToast } from '../../../context/ToastContext';
 import {
   Calendar,
   X,
   CheckCircle2,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
-
-const INITIAL_TASKS = [
-  {
-    id: 1,
-    judul: 'Implementasi halaman laporan',
-    peserta: 'Raka Aditya',
-    email: 'raka@metro.demo',
-    tenggat: '22 Okt 2026',
-    rawTenggat: '2026-10-22',
-    tenggatFormatted: '22 Oktober 2026',
-    status: 'Dikerjakan',
-    isTerlambat: false,
-    deskripsi:
-      'Buat halaman laporan operasional sesuai rancangan dan pastikan tampilan responsif.',
-    catatanProgres: 'Tabel utama selesai, lanjut validasi filter.',
-  },
-  {
-    id: 2,
-    judul: 'Audit komponen formulir',
-    peserta: 'Raka Aditya',
-    email: 'raka@metro.demo',
-    tenggat: '18 Okt 2026',
-    rawTenggat: '2026-10-18',
-    tenggatFormatted: '18 Oktober 2026',
-    status: 'Belum Dikerjakan',
-    isTerlambat: true,
-    deskripsi:
-      'Periksa label, validasi, dan urutan keyboard pada formulir utama.',
-    catatanProgres: 'Belum ada pembaruan.',
-  },
-  {
-    id: 3,
-    judul: 'Dokumentasi API internal',
-    peserta: 'Salsa Maharani',
-    email: 'salsa@metro.demo',
-    tenggat: '25 Okt 2026',
-    rawTenggat: '2026-10-25',
-    tenggatFormatted: '25 Oktober 2026',
-    status: 'Dikerjakan',
-    isTerlambat: false,
-    deskripsi:
-      'Lengkapi dokumentasi endpoint absensi dan logbook menggunakan Swagger.',
-    catatanProgres: 'Endpoint absensi sudah tercakup.',
-  },
-];
+import { magangService } from '../services/magangService';
 
 export const InternTasksPage = () => {
-  const [tasks, setTasks] = useState(() => {
-    try {
-      const saved = localStorage.getItem('metrohub_tasks');
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // ignore
-    }
-    return INITIAL_TASKS;
-  });
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const [selectedTaskToUpdate, setSelectedTaskToUpdate] = useState(null);
-  const [modalStatus, setModalStatus] = useState('Dikerjakan');
+  const [modalStatus, setModalStatus] = useState('DIKERJAKAN');
   const [modalCatatan, setModalCatatan] = useState('');
   const { showToast } = useToast();
 
-  useEffect(() => {
+  const fetchMyTasks = useCallback(async () => {
     try {
-      localStorage.setItem('metrohub_tasks', JSON.stringify(tasks));
-    } catch {
-      // ignore
+      setLoading(true);
+      setError(null);
+      const res = await magangService.getMyTasks();
+      setTasks(res?.data || []);
+    } catch (err) {
+      console.error('Failed to load my tasks:', err);
+      setError(err?.message || 'Gagal memuat tugas saya');
+    } finally {
+      setLoading(false);
     }
-  }, [tasks]);
+  }, []);
 
-  const rakaTasks = tasks.filter((t) => t.peserta === 'Raka Aditya');
-
-  const filteredTasks = rakaTasks;
+  useEffect(() => {
+    fetchMyTasks();
+  }, [fetchMyTasks]);
 
   const handleOpenUpdate = (task) => {
     setSelectedTaskToUpdate(task);
-    setModalStatus(task.status);
-    setModalCatatan(task.catatanProgres || '');
+    setModalStatus(task.status || 'BELUM_DIKERJAKAN');
+    setModalCatatan(task.catatan_progres || '');
   };
 
-  const handleSaveUpdate = (e) => {
+  const handleSaveUpdate = async (e) => {
     e.preventDefault();
     if (!selectedTaskToUpdate) return;
 
-    const updatedTasks = tasks.map((t) => {
-      if (t.id === selectedTaskToUpdate.id) {
-        return {
-          ...t,
-          status: modalStatus,
-          catatanProgres: modalCatatan.trim() || 'Belum ada pembaruan.',
-          isTerlambat: modalStatus === 'Selesai' ? false : t.isTerlambat,
-        };
-      }
-      return t;
-    });
+    try {
+      setSubmitting(true);
+      const payload = {
+        status: modalStatus,
+        catatan_progres: modalCatatan.trim(),
+      };
 
-    setTasks(updatedTasks);
-    setSelectedTaskToUpdate(null);
+      await magangService.updateTaskProgress(selectedTaskToUpdate.id, payload);
+      showToast({
+        title: 'Progres diperbarui',
+        message: `Status tugas "${selectedTaskToUpdate.judul}" berhasil disimpan.`,
+      });
 
-    showToast({
-      title: 'Pembaruan tugas tersimpan',
-      message: 'Status dan catatan terbaru telah diperbarui.',
-    });
+      setSelectedTaskToUpdate(null);
+      await fetchMyTasks();
+    } catch (err) {
+      console.error('Failed to update task progress:', err);
+      showToast({
+        title: 'Gagal memperbarui progres',
+        message: err?.message || 'Terjadi kesalahan sistem',
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const formatDateToID = (dateStr) => {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
   };
 
   return (
     <div className="space-y-6 w-full pb-12 font-sans">
-      {/* Header Halaman Sesuai Figma M-04 */}
+      {/* Header Halaman */}
       <div>
         <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight font-lexend">
           Tugas Saya
         </h1>
-        <p className="text-xs md:text-sm text-slate-500 mt-1 font-source-sans">
-          {rakaTasks.filter((t) => t.status !== 'Selesai').length} tugas aktif · Masa magang berakhir 31 Desember 2026 (72 hari lagi).
+        <p className="text-xs md:text-sm text-slate-500 mt-1">
+          Penugasan dan status pengerjaan yang dibagikan oleh admin/pembimbing.
         </p>
       </div>
 
-      {/* Daftar Kartu Tugas */}
-      <div className="space-y-4">
-        {filteredTasks.length === 0 ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center shadow-2xs">
-            <CheckCircle2 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-            <p className="text-sm font-semibold text-slate-700 font-lexend">
-              Tidak ada tugas dalam kategori ini
-            </p>
+      {/* Error Alert */}
+      {error && (
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs md:text-sm flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+            <span>{error}</span>
           </div>
-        ) : (
-          filteredTasks.map((task) => (
-            <div
-              key={task.id}
-              className="bg-white rounded-xl border border-slate-200 p-6 md:p-7 shadow-2xs space-y-4 hover:border-slate-300 transition"
-            >
-              {/* Baris Atas: Badge Terlambat (jika ada) dan Badge Status */}
-              <div>
-                {task.isTerlambat && task.status !== 'Selesai' && (
-                  <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#fef2f2] text-[#b91c1c] border border-[#fecaca] mb-2 font-source-sans">
-                    Terlambat
-                  </span>
-                )}
+          <button
+            type="button"
+            onClick={fetchMyTasks}
+            className="px-3 py-1 bg-white border border-rose-300 rounded text-xs font-semibold"
+          >
+            Coba lagi
+          </button>
+        </div>
+      )}
 
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                  <h3 className="text-lg font-bold text-slate-900 font-lexend">
-                    {task.judul}
-                  </h3>
+      {/* Daftar Tugas Card */}
+      <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs md:text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 bg-white text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                <th className="px-5 py-4 font-semibold">Judul Tugas & Deskripsi</th>
+                <th className="px-5 py-4 font-semibold">Tenggat</th>
+                <th className="px-5 py-4 font-semibold">Status</th>
+                <th className="px-5 py-4 font-semibold text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-700">
+              {loading ? (
+                <tr>
+                  <td colSpan={4} className="px-5 py-12 text-center text-slate-400">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#17362f] mb-2" />
+                    <span>Memuat tugas Anda...</span>
+                  </td>
+                </tr>
+              ) : tasks.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-5 py-10 text-center text-slate-400">
+                    Belum ada penugasan untuk Anda saat ini.
+                  </td>
+                </tr>
+              ) : (
+                tasks.map((task) => {
+                  const isSelesai = task.status === 'SELESAI';
+                  const isTerlambat = Boolean(task.terlambat);
 
-                  {/* Badge Status Tugas */}
-                  <div className="self-start sm:self-auto shrink-0">
-                    {task.status === 'Selesai' ? (
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#e7f5ec] text-[#176a43] border border-[#c6e9d4] font-source-sans">
-                        Selesai
-                      </span>
-                    ) : task.status === 'Dikerjakan' ? (
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#e7f5ec] text-[#176a43] border border-[#c6e9d4] font-source-sans">
-                        Dikerjakan
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200 font-source-sans">
-                        Belum Dikerjakan
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
+                  let statusBadgeClass = 'bg-slate-100 text-slate-600 border border-slate-200';
+                  let statusLabel = 'Belum Dikerjakan';
 
-              {/* Deskripsi Tugas */}
-              <p className="text-sm text-slate-600 leading-relaxed font-source-sans">
-                {task.deskripsi}
-              </p>
+                  if (isSelesai) {
+                    statusBadgeClass = 'bg-[#e7f5ec] text-[#206941] border border-[#c6e9d4]';
+                    statusLabel = 'Selesai';
+                  } else if (isTerlambat) {
+                    statusBadgeClass = 'bg-[#fef2f2] text-[#b91c1c] border border-rose-200';
+                    statusLabel = 'Terlambat';
+                  } else if (task.status === 'DIKERJAKAN') {
+                    statusBadgeClass = 'bg-[#fef9c3] text-[#854d0e] border border-amber-200';
+                    statusLabel = 'Dikerjakan';
+                  }
 
-              {/* Meta Informasi: Tenggat & Catatan Progres */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500 font-source-sans pt-1 border-t border-slate-100">
-                <div className="flex items-center gap-1.5 font-medium text-slate-700">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Tenggat {task.tenggat}</span>
-                </div>
-                <span className="text-slate-300 hidden sm:inline">•</span>
-                <div className="text-slate-500">
-                  <span className="font-medium text-slate-600">Catatan:</span> {task.catatanProgres || 'Belum ada pembaruan.'}
-                </div>
-              </div>
+                  return (
+                    <tr key={task.id} className="hover:bg-slate-50/80 transition">
+                      <td className="px-5 py-4">
+                        <p className="font-bold text-slate-900 leading-snug">
+                          {task.judul}
+                        </p>
+                        <p className="text-slate-500 text-xs mt-1 max-w-lg line-clamp-2">
+                          {task.deskripsi}
+                        </p>
+                        {task.catatan_progres && (
+                          <p className="text-[11px] text-[#17362f] font-medium mt-1.5 bg-[#eef6f2] px-2 py-0.5 rounded inline-block">
+                            Catatan: {task.catatan_progres}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 text-slate-600 whitespace-nowrap">
+                        {formatDateToID(task.tenggat)}
+                      </td>
+                      <td className="px-5 py-4 whitespace-nowrap">
+                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${statusBadgeClass}`}>
+                          {statusLabel}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-right whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenUpdate(task)}
+                          className="px-3.5 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg shadow-2xs transition"
+                        >
+                          Perbarui Progres
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
 
-              {/* Tombol Aksi: Lihat dan Perbarui */}
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => handleOpenUpdate(task)}
-                  className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 active:scale-[0.99] text-slate-800 text-xs font-semibold rounded-lg shadow-2xs transition cursor-pointer"
-                >
-                  Lihat dan Perbarui
-                </button>
-              </div>
-            </div>
-          ))
-        )}
+        <div className="px-5 py-3.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+          <span>Menampilkan {tasks.length} tugas</span>
+          <span>1 dari 1 halaman</span>
+        </div>
       </div>
 
-      {/* ======================================================== */}
-      {/* MODAL F09: Perbarui Tugas (Sesuai Figma M-04 Form & Hasil) */}
-      {/* ======================================================== */}
+      {/* MODAL PERBARUI PROGRES */}
       {selectedTaskToUpdate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xl max-w-lg w-full max-h-[92vh] flex flex-col overflow-hidden">
-            {/* Modal Header */}
-            <div className="p-6 border-b border-slate-100 flex items-start justify-between">
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-2xs animate-fadeIn">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative border border-slate-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
               <div>
-                <h3 className="text-xl font-bold text-slate-900 font-lexend">
-                  Perbarui Tugas
+                <span className="text-[10px] font-bold text-[#17362f] uppercase tracking-wider">
+                  Perbarui Progres Tugas
+                </span>
+                <h3 className="text-lg font-bold text-slate-900 leading-tight">
+                  {selectedTaskToUpdate.judul}
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5 font-source-sans">
-                  Raka Aditya
-                </p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedTaskToUpdate(null)}
-                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Modal Form Body */}
-            <form onSubmit={handleSaveUpdate} className="flex-1 overflow-y-auto p-6 space-y-4">
-              {/* Judul Tugas (Readonly) */}
+            <form onSubmit={handleSaveUpdate} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5 font-source-sans">
-                  Judul tugas
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Status pengerjaan
                 </label>
-                <input
-                  type="text"
-                  readOnly
-                  value={selectedTaskToUpdate.judul}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 cursor-not-allowed select-text font-source-sans"
-                />
-              </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <label
+                    className={`flex items-center justify-center p-2.5 rounded-lg border cursor-pointer text-xs font-semibold transition ${
+                      modalStatus === 'BELUM_DIKERJAKAN'
+                        ? 'border-[#17362f] bg-[#eef5f2] text-[#17362f]'
+                        : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="modal_status"
+                      value="BELUM_DIKERJAKAN"
+                      checked={modalStatus === 'BELUM_DIKERJAKAN'}
+                      onChange={() => setModalStatus('BELUM_DIKERJAKAN')}
+                      className="sr-only"
+                    />
+                    <span>Belum Mulai</span>
+                  </label>
 
-              {/* Deskripsi (Readonly) */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5 font-source-sans">
-                  Deskripsi
-                </label>
-                <textarea
-                  rows={3}
-                  readOnly
-                  value={selectedTaskToUpdate.deskripsi}
-                  className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 leading-relaxed cursor-not-allowed select-text font-source-sans"
-                />
-              </div>
+                  <label
+                    className={`flex items-center justify-center p-2.5 rounded-lg border cursor-pointer text-xs font-semibold transition ${
+                      modalStatus === 'DIKERJAKAN'
+                        ? 'border-[#17362f] bg-[#eef5f2] text-[#17362f]'
+                        : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="modal_status"
+                      value="DIKERJAKAN"
+                      checked={modalStatus === 'DIKERJAKAN'}
+                      onChange={() => setModalStatus('DIKERJAKAN')}
+                      className="sr-only"
+                    />
+                    <span>Dikerjakan</span>
+                  </label>
 
-              {/* Tenggat (Readonly) */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5 font-source-sans">
-                  Tenggat
-                </label>
-                <input
-                  type="text"
-                  readOnly
-                  value={selectedTaskToUpdate.tenggatFormatted || selectedTaskToUpdate.tenggat}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 cursor-not-allowed select-text font-source-sans"
-                />
-              </div>
-
-              {/* Pilihan Status Tugas (Radio Pill Options Sesuai Figma F09) */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-2 font-source-sans">
-                  Status tugas
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  {[
-                    { label: 'Belum Dikerjakan', value: 'Belum Dikerjakan' },
-                    { label: 'Dikerjakan', value: 'Dikerjakan' },
-                    { label: 'Selesai', value: 'Selesai' },
-                  ].map((option) => {
-                    const isSelected = modalStatus === option.value;
-                    return (
-                      <button
-                        type="button"
-                        key={option.value}
-                        onClick={() => setModalStatus(option.value)}
-                        className={
-                          'px-3 py-2.5 rounded-lg border text-xs font-semibold flex items-center gap-2.5 transition cursor-pointer font-source-sans ' +
-                          (isSelected
-                            ? 'border-[#17362f] bg-[#e7f5ec]/40 text-[#17362f] ring-1 ring-[#17362f]'
-                            : 'border-slate-300 hover:border-slate-400 bg-white text-slate-700')
-                        }
-                      >
-                        <div
-                          className={
-                            'w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ' +
-                            (isSelected
-                              ? 'border-[#17362f] bg-[#17362f]'
-                              : 'border-slate-400 bg-white')
-                          }
-                        >
-                          {isSelected && (
-                            <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                          )}
-                        </div>
-                        <span>{option.label}</span>
-                      </button>
-                    );
-                  })}
+                  <label
+                    className={`flex items-center justify-center p-2.5 rounded-lg border cursor-pointer text-xs font-semibold transition ${
+                      modalStatus === 'SELESAI'
+                        ? 'border-[#17362f] bg-[#eef5f2] text-[#17362f]'
+                        : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="modal_status"
+                      value="SELESAI"
+                      checked={modalStatus === 'SELESAI'}
+                      onChange={() => setModalStatus('SELESAI')}
+                      className="sr-only"
+                    />
+                    <span>Selesai</span>
+                  </label>
                 </div>
               </div>
 
-              {/* Catatan Progres */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5 font-source-sans">
-                  Catatan progres
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Catatan Progres
                 </label>
                 <textarea
                   rows={3}
                   value={modalCatatan}
                   onChange={(e) => setModalCatatan(e.target.value)}
-                  placeholder="Tambahkan perkembangan pekerjaan..."
-                  className="w-full p-3.5 bg-white border border-slate-300 focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f] rounded-lg text-sm text-slate-900 leading-relaxed font-source-sans transition"
+                  placeholder="Ceritakan progres terkini pengerjaan tugas ini..."
+                  className="w-full p-3 rounded-lg border border-slate-300 text-xs md:text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#17362f] resize-none"
                 />
-                <p className="text-[11px] text-slate-400 font-source-sans mt-1">
-                  Opsional. Tambahkan perkembangan pekerjaan bila diperlukan.
-                </p>
               </div>
 
-              {/* Modal Footer Buttons */}
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+              <div className="pt-2 flex items-center justify-between gap-3">
                 <button
                   type="button"
+                  disabled={submitting}
                   onClick={() => setSelectedTaskToUpdate(null)}
-                  className="px-5 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 rounded-lg text-xs font-semibold transition active:scale-[0.99] cursor-pointer"
+                  className="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-[#17362f] hover:bg-[#122b25] text-white rounded-lg text-xs font-semibold shadow-xs transition active:scale-[0.99] cursor-pointer"
+                  disabled={submitting}
+                  className="px-6 py-2.5 bg-[#17362f] hover:bg-[#122b25] disabled:bg-slate-400 text-white text-xs font-semibold rounded-lg shadow-xs transition flex items-center gap-2"
                 >
-                  Simpan Pembaruan
+                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <span>Simpan Progres</span>
                 </button>
               </div>
             </form>
@@ -350,3 +324,5 @@ export const InternTasksPage = () => {
     </div>
   );
 };
+
+export default InternTasksPage;

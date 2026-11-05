@@ -1,120 +1,107 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useToast } from '../../../context/ToastContext';
 import {
   Plus,
   ChevronDown,
   X,
   AlertCircle,
+  Loader2,
+  Trash2,
 } from 'lucide-react';
-
-const INTERNS_MAP = {
-  'Raka Aditya': 'raka@metro.demo',
-  'Salsa Maharani': 'salsa@metro.demo',
-  'Dimas Nugraha': 'dimas@metro.demo',
-};
-
-const INITIAL_TASKS = [
-  {
-    id: 1,
-    judul: 'Implementasi halaman laporan',
-    peserta: 'Raka Aditya',
-    email: 'raka@metro.demo',
-    tenggat: '22 Okt 2026',
-    rawTenggat: '2026-10-22',
-    tenggatFormatted: '22 Oktober 2026',
-    status: 'Dikerjakan',
-    isTerlambat: false,
-    deskripsi:
-      'Buat halaman laporan operasional sesuai rancangan dan pastikan tampilan responsif.',
-    catatanProgres: 'Tabel utama selesai, lanjut validasi filter.',
-  },
-  {
-    id: 2,
-    judul: 'Audit komponen formulir',
-    peserta: 'Raka Aditya',
-    email: 'raka@metro.demo',
-    tenggat: '18 Okt 2026',
-    rawTenggat: '2026-10-18',
-    tenggatFormatted: '18 Oktober 2026',
-    status: 'Belum Dikerjakan',
-    isTerlambat: true,
-    deskripsi:
-      'Periksa seluruh komponen formulir, pastikan label dan aria attributes terhubung.',
-    catatanProgres: 'Belum ada pembaruan.',
-  },
-  {
-    id: 3,
-    judul: 'Dokumentasi API internal',
-    peserta: 'Salsa Maharani',
-    email: 'salsa@metro.demo',
-    tenggat: '25 Okt 2026',
-    rawTenggat: '2026-10-25',
-    tenggatFormatted: '25 Oktober 2026',
-    status: 'Selesai',
-    isTerlambat: false,
-    deskripsi:
-      'Dokumentasikan format response JSON untuk seluruh endpoint modul pengguna dan magang.',
-    catatanProgres: 'Dokumentasi telah diperiksa.',
-  },
-];
+import { magangService } from '../services/magangService';
 
 export const AdminTasksPage = () => {
-  const [tasks, setTasks] = useState(() => {
-    try {
-      const saved = localStorage.getItem('metrohub_tasks');
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // ignore
-    }
-    return INITIAL_TASKS;
-  });
+  const [tasks, setTasks] = useState([]);
+  const [interns, setInterns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem('metrohub_tasks', JSON.stringify(tasks));
-    } catch {
-      // ignore
-    }
-  }, [tasks]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPeserta, setSelectedPeserta] = useState('Semua peserta');
-  const [selectedStatus, setSelectedStatus] = useState('Semua status');
+  const [selectedPesertaId, setSelectedPesertaId] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
 
   // Modal State
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedDetailTask, setSelectedDetailTask] = useState(null);
 
-  // Form State Beri Tugas (F07)
+  // Form State Beri Tugas
   const [formData, setFormData] = useState({
-    penerima: 'Raka Aditya',
+    intern_id: '',
     judul: '',
     deskripsi: '',
     tenggat: '',
   });
 
-  // Form Validation Errors
   const [formErrors, setFormErrors] = useState({});
-
   const { showToast } = useToast();
 
-  // Open Add Task Modal (Prefilled according to Figma example)
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [tasksRes, internsRes] = await Promise.all([
+        magangService.getAllTasks(),
+        magangService.getAllInterns(),
+      ]);
+      setTasks(tasksRes?.data || []);
+      setInterns(internsRes?.data || []);
+    } catch (err) {
+      console.error('Failed to load tasks / interns:', err);
+      setError(err?.message || 'Gagal memuat daftar tugas');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const formatDateToID = (dateStr) => {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+  };
+
+  const formatDateLong = (dateStr) => {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+    const months = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+    ];
+    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+  };
+
+  // Open Add Task Modal
   const handleOpenAddModal = () => {
+    const defaultInternId = interns.length > 0 ? String(interns[0].id) : '';
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 3);
+    const defaultTenggat = tomorrow.toISOString().split('T')[0];
+
     setFormData({
-      penerima: 'Raka Aditya',
-      judul: 'Validasi filter transaksi',
-      deskripsi:
-        'Periksa filter periode, jenis, dan kategori pada daftar transaksi. Cocokkan hasil dengan data contoh dan pastikan reset filter menampilkan daftar semula.',
-      tenggat: '2026-10-23',
+      intern_id: defaultInternId,
+      judul: '',
+      deskripsi: '',
+      tenggat: defaultTenggat,
     });
     setFormErrors({});
     setShowAddModal(true);
   };
 
-  // Handle Submit Beri Tugas with strict validation
-  const handleSubmitTask = (e) => {
+  // Handle Submit Beri Tugas
+  const handleSubmitTask = async (e) => {
     e.preventDefault();
 
     const errors = {};
+    if (!formData.intern_id) {
+      errors.intern_id = 'Pilih anak magang penerima tugas.';
+    }
     if (!formData.judul.trim()) {
       errors.judul = 'Judul tugas wajib diisi.';
     } else if (formData.judul.trim().length < 3) {
@@ -134,146 +121,163 @@ export const AdminTasksPage = () => {
       return;
     }
 
-    setFormErrors({});
+    try {
+      setSubmitting(true);
+      const payload = {
+        intern_id: Number(formData.intern_id),
+        judul: formData.judul.trim(),
+        deskripsi: formData.deskripsi.trim(),
+        tenggat: formData.tenggat,
+      };
 
-    const dateObj = new Date(formData.tenggat);
-    const day = dateObj.getDate() || 23;
-    const monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-    const monthsLong = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-    ];
-    const monthShort = monthsShort[dateObj.getMonth()] || 'Okt';
-    const monthLong = monthsLong[dateObj.getMonth()] || 'Oktober';
-    const year = dateObj.getFullYear() || 2026;
+      await magangService.createTask(payload);
+      setShowAddModal(false);
 
-    const newTask = {
-      id: Date.now(),
-      judul: formData.judul.trim(),
-      peserta: formData.penerima,
-      email: INTERNS_MAP[formData.penerima] || 'peserta@metro.demo',
-      tenggat: `${day} ${monthShort} ${year}`,
-      rawTenggat: formData.tenggat,
-      tenggatFormatted: `${day} ${monthLong} ${year}`,
-      status: 'Belum Dikerjakan',
-      isTerlambat: false,
-      deskripsi: formData.deskripsi.trim(),
-      catatanProgres: 'Belum ada pembaruan.',
-    };
+      const targetIntern = interns.find((i) => i.id === Number(formData.intern_id));
+      showToast({
+        title: 'Tugas berhasil diberikan',
+        message: `${payload.judul} ditambahkan untuk ${targetIntern?.nama || 'peserta'}.`,
+      });
 
-    setTasks([newTask, ...tasks]);
-    setShowAddModal(false);
+      await fetchData();
+    } catch (err) {
+      console.error('Failed to create task:', err);
+      showToast({
+        title: 'Gagal memberikan tugas',
+        message: err?.message || 'Terjadi kesalahan sistem',
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
-    showToast({
-      title: 'Tugas berhasil diberikan',
-      message: `${newTask.judul} ditambahkan untuk ${newTask.peserta}.`,
-    });
+  // Handle Delete Task
+  const handleDeleteTask = async (taskId, judul) => {
+    if (!window.confirm(`Hapus tugas "${judul}"?`)) return;
+
+    try {
+      await magangService.deleteTask(taskId);
+      showToast({
+        title: 'Tugas dihapus',
+        message: `Tugas "${judul}" berhasil dihapus.`,
+      });
+      await fetchData();
+    } catch (err) {
+      console.error('Failed to delete task:', err);
+      showToast({
+        title: 'Gagal menghapus tugas',
+        message: err?.message || 'Terjadi kesalahan',
+      });
+    }
   };
 
   // Filter Tasks
-  const filteredTasks = tasks.filter((task) => {
-    const matchesSearch =
-      searchTerm.trim() === '' ||
-      task.judul.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((task) => {
+      const matchSearch =
+        searchTerm.trim() === '' ||
+        (task.judul || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (task.nama_anak_magang || '').toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesPeserta =
-      selectedPeserta === 'Semua peserta' || task.peserta === selectedPeserta;
+      const matchPeserta =
+        selectedPesertaId === 'all' || String(task.intern_id) === String(selectedPesertaId);
 
-    const matchesStatus =
-      selectedStatus === 'Semua status' ||
-      (selectedStatus === 'Terlambat' && task.isTerlambat) ||
-      task.status === selectedStatus;
+      let matchStatus = true;
+      if (selectedStatus === 'SELESAI') {
+        matchStatus = task.status === 'SELESAI';
+      } else if (selectedStatus === 'DIKERJAKAN') {
+        matchStatus = task.status === 'DIKERJAKAN';
+      } else if (selectedStatus === 'BELUM_DIKERJAKAN') {
+        matchStatus = task.status === 'BELUM_DIKERJAKAN';
+      } else if (selectedStatus === 'TERLAMBAT') {
+        matchStatus = Boolean(task.terlambat);
+      }
 
-    return matchesSearch && matchesPeserta && matchesStatus;
-  });
-
-  const getStatusBadge = (task) => {
-    if (task.status === 'Selesai') {
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#e7f5ec] text-[#176a43] border border-[#c6e9d4]">
-          Selesai
-        </span>
-      );
-    }
-    if (task.status === 'Dikerjakan') {
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#e7f5ec] text-[#176a43] border border-[#c6e9d4]">
-          Dikerjakan
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
-        Belum Dikerjakan
-      </span>
-    );
-  };
+      return matchSearch && matchPeserta && matchStatus;
+    });
+  }, [tasks, searchTerm, selectedPesertaId, selectedStatus]);
 
   return (
     <div className="space-y-6">
-      {/* Header Halaman Sesuai Figma */}
+      {/* Header Halaman */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 tracking-tight font-lexend">
             Penugasan
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Pantau tugas dan catatan progres peserta.
+            Beri tugas, tentukan tenggat, dan pantau progres pengerjaan.
           </p>
         </div>
         <button
           type="button"
           onClick={handleOpenAddModal}
-          className="self-start sm:self-auto px-5 py-2.5 bg-[#17362f] hover:bg-[#122b25] active:scale-[0.99] text-white text-sm font-semibold rounded-lg flex items-center gap-2 shadow-xs transition cursor-pointer"
+          className="self-start sm:self-auto px-4 py-2.5 bg-[#17362f] hover:bg-[#122b25] active:scale-[0.99] text-white text-xs md:text-sm font-semibold rounded-lg flex items-center gap-2 shadow-xs transition"
         >
           <Plus className="w-4 h-4" />
           <span>Beri Tugas</span>
         </button>
       </div>
 
+      {/* Error Alert */}
+      {error && (
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs md:text-sm flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={fetchData}
+            className="px-3 py-1 bg-white border border-rose-300 rounded text-xs font-semibold"
+          >
+            Coba lagi
+          </button>
+        </div>
+      )}
+
       {/* Filter Card */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs">
+      <div className="bg-white rounded-xl border border-slate-200/90 p-4 shadow-2xs">
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-          {/* Input Cari Judul Tugas */}
           <div className="flex-1 relative">
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Cari judul tugas"
-              className="w-full h-11 px-4 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f] transition"
+              placeholder="Cari judul tugas atau nama peserta"
+              className="w-full h-10 px-3.5 bg-white border border-slate-200 rounded-lg text-xs md:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f] transition"
             />
           </div>
 
-          {/* Dropdown Peserta */}
           <div className="w-full md:w-56 relative">
             <select
-              value={selectedPeserta}
-              onChange={(e) => setSelectedPeserta(e.target.value)}
-              className="w-full h-11 pl-4 pr-9 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 font-medium focus:outline-none focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f] appearance-none cursor-pointer transition"
+              value={selectedPesertaId}
+              onChange={(e) => setSelectedPesertaId(e.target.value)}
+              className="w-full h-10 pl-3.5 pr-8 bg-white border border-slate-200 rounded-lg text-xs md:text-sm text-slate-800 focus:outline-none focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f] appearance-none cursor-pointer transition"
             >
-              <option value="Semua peserta">Semua peserta</option>
-              <option value="Raka Aditya">Raka Aditya</option>
-              <option value="Salsa Maharani">Salsa Maharani</option>
-              <option value="Dimas Nugraha">Dimas Nugraha</option>
+              <option value="all">Semua peserta</option>
+              {interns.map((intern) => (
+                <option key={intern.id} value={intern.id}>
+                  {intern.nama}
+                </option>
+              ))}
             </select>
             <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
               <ChevronDown className="w-4 h-4" />
             </div>
           </div>
 
-          {/* Dropdown Status */}
-          <div className="w-full md:w-52 relative">
+          <div className="w-full md:w-48 relative">
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full h-11 pl-4 pr-9 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 font-medium focus:outline-none focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f] appearance-none cursor-pointer transition"
+              className="w-full h-10 pl-3.5 pr-8 bg-white border border-slate-200 rounded-lg text-xs md:text-sm text-slate-800 focus:outline-none focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f] appearance-none cursor-pointer transition"
             >
-              <option value="Semua status">Semua status</option>
-              <option value="Dikerjakan">Dikerjakan</option>
-              <option value="Belum Dikerjakan">Belum Dikerjakan</option>
-              <option value="Selesai">Selesai</option>
-              <option value="Terlambat">Terlambat</option>
+              <option value="all">Semua status</option>
+              <option value="BELUM_DIKERJAKAN">Belum Dikerjakan</option>
+              <option value="DIKERJAKAN">Dikerjakan</option>
+              <option value="SELESAI">Selesai</option>
+              <option value="TERLAMBAT">Terlambat</option>
             </select>
             <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
               <ChevronDown className="w-4 h-4" />
@@ -282,217 +286,238 @@ export const AdminTasksPage = () => {
         </div>
       </div>
 
-      {/* Tabel Penugasan Sesuai Figma */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+      {/* Tabel Data Penugasan */}
+      <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse text-xs md:text-sm">
             <thead>
-              <tr className="bg-[#fbfcfb] border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <th className="py-3.5 px-5">Judul Tugas</th>
-                <th className="py-3.5 px-5">Peserta</th>
-                <th className="py-3.5 px-5">Tenggat</th>
-                <th className="py-3.5 px-5">Status</th>
-                <th className="py-3.5 px-5">Catatan Progres Terbaru</th>
-                <th className="py-3.5 px-5 text-right">Aksi</th>
+              <tr className="border-b border-slate-200 bg-white text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                <th className="px-5 py-4 font-semibold">Judul Tugas</th>
+                <th className="px-5 py-4 font-semibold">Peserta</th>
+                <th className="px-5 py-4 font-semibold">Tenggat</th>
+                <th className="px-5 py-4 font-semibold">Status</th>
+                <th className="px-5 py-4 font-semibold text-right">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
-              {filteredTasks.length === 0 ? (
+            <tbody className="divide-y divide-slate-100 text-slate-700">
+              {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400 text-sm">
-                    Tidak ada tugas yang sesuai dengan filter.
+                  <td colSpan={5} className="px-5 py-12 text-center text-slate-400">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#17362f] mb-2" />
+                    <span>Memuat daftar tugas...</span>
+                  </td>
+                </tr>
+              ) : filteredTasks.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-5 py-10 text-center text-slate-400">
+                    Belum ada tugas yang cocok dengan filter.
                   </td>
                 </tr>
               ) : (
-                filteredTasks.map((task) => (
-                  <tr key={task.id} className="hover:bg-slate-50/70 transition">
-                    <td className="py-4 px-5">
-                      <p className="font-bold text-slate-900 leading-tight">
-                        {task.judul}
-                      </p>
-                      {task.isTerlambat && (
-                        <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#fef2f2] text-[#b91c1c] border border-rose-200 mt-1">
-                          Terlambat
+                filteredTasks.map((task) => {
+                  const isSelesai = task.status === 'SELESAI';
+                  const isTerlambat = Boolean(task.terlambat);
+
+                  let statusBadgeClass = 'bg-slate-100 text-slate-600 border border-slate-200';
+                  let statusLabel = 'Belum Dikerjakan';
+
+                  if (isSelesai) {
+                    statusBadgeClass = 'bg-[#e7f5ec] text-[#206941] border border-[#c6e9d4]';
+                    statusLabel = 'Selesai';
+                  } else if (isTerlambat) {
+                    statusBadgeClass = 'bg-[#fef2f2] text-[#b91c1c] border border-rose-200';
+                    statusLabel = 'Terlambat';
+                  } else if (task.status === 'DIKERJAKAN') {
+                    statusBadgeClass = 'bg-[#fef9c3] text-[#854d0e] border border-amber-200';
+                    statusLabel = 'Dikerjakan';
+                  }
+
+                  return (
+                    <tr key={task.id} className="hover:bg-slate-50/80 transition">
+                      <td className="px-5 py-4">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDetailTask(task)}
+                          className="font-bold text-slate-900 hover:text-[#17362f] hover:underline text-left block leading-snug"
+                        >
+                          {task.judul}
+                        </button>
+                      </td>
+                      <td className="px-5 py-4 text-slate-600">
+                        {task.nama_anak_magang || `ID Intern #${task.intern_id}`}
+                      </td>
+                      <td className="px-5 py-4 text-slate-600 whitespace-nowrap">
+                        {formatDateToID(task.tenggat)}
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${statusBadgeClass}`}>
+                          {statusLabel}
                         </span>
-                      )}
-                    </td>
-                    <td className="py-4 px-5 text-slate-700 whitespace-nowrap">
-                      {task.peserta}
-                    </td>
-                    <td className="py-4 px-5 text-slate-700 whitespace-nowrap">
-                      {task.tenggat}
-                    </td>
-                    <td className="py-4 px-5 whitespace-nowrap">
-                      {getStatusBadge(task)}
-                    </td>
-                    <td className="py-4 px-5 text-slate-700 max-w-xs md:max-w-md truncate">
-                      {task.catatanProgres}
-                    </td>
-                    <td className="py-4 px-5 text-right whitespace-nowrap">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedDetailTask(task)}
-                        className="text-[#176a43] hover:text-[#0f462c] font-semibold text-sm transition hover:underline cursor-pointer inline-flex items-center gap-1"
-                      >
-                        Detail
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="px-5 py-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDetailTask(task)}
+                            className="text-xs text-[#17362f] hover:underline font-semibold"
+                          >
+                            Detail
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTask(task.id, task.judul)}
+                            className="text-xs text-rose-600 hover:text-rose-800 transition p-1"
+                            title="Hapus Tugas"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
+
+        <div className="px-5 py-3.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+          <span>Menampilkan {filteredTasks.length} tugas</span>
+          <span>1 dari 1 halaman</span>
+        </div>
       </div>
 
-      {/* ======================================================== */}
-      {/* MODAL F07: Beri Tugas dengan Validasi                    */}
-      {/* ======================================================== */}
+      {/* MODAL BERI TUGAS */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xl max-w-md w-full max-h-[92vh] flex flex-col overflow-hidden">
-            {/* Modal Header */}
-            <div className="p-6 pb-4 flex items-center justify-between border-b border-slate-100">
-              <h2 className="text-xl font-semibold text-slate-900 font-lexend">
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-2xs animate-fadeIn">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative border border-slate-200">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-xl font-semibold text-slate-900 font-lexend">
                 Beri Tugas
-              </h2>
+              </h3>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition"
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Modal Form Body */}
-            <form onSubmit={handleSubmitTask} className="p-6 overflow-y-auto space-y-4 flex-1">
-              {/* Field Penerima */}
+            <form onSubmit={handleSubmitTask} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Penerima
+                  Penerima tugas
                 </label>
                 <div className="relative">
                   <select
-                    value={formData.penerima}
-                    onChange={(e) =>
-                      setFormData({ ...formData, penerima: e.target.value })
-                    }
-                    className="w-full h-11 pl-3 pr-9 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 font-medium focus:outline-none focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f] appearance-none cursor-pointer transition"
+                    value={formData.intern_id}
+                    onChange={(e) => setFormData({ ...formData, intern_id: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs md:text-sm text-slate-900 bg-white focus:outline-none focus:ring-1 focus:ring-[#17362f] appearance-none"
                   >
-                    <option value="Raka Aditya">Raka Aditya</option>
-                    <option value="Salsa Maharani">Salsa Maharani</option>
-                    <option value="Dimas Nugraha">Dimas Nugraha</option>
+                    <option value="" disabled>Pilih peserta magang</option>
+                    {interns.map((intern) => (
+                      <option key={intern.id} value={intern.id}>
+                        {intern.nama} ({intern.email})
+                      </option>
+                    ))}
                   </select>
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
                     <ChevronDown className="w-4 h-4" />
                   </div>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">
-                  {INTERNS_MAP[formData.penerima]}
-                </p>
+                {formErrors.intern_id && (
+                  <p className="text-[11px] text-rose-600 mt-1">{formErrors.intern_id}</p>
+                )}
               </div>
 
-              {/* Field Judul Tugas */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Judul tugas
                 </label>
                 <input
                   type="text"
+                  required
                   value={formData.judul}
                   onChange={(e) => {
                     setFormData({ ...formData, judul: e.target.value });
-                    if (formErrors.judul) {
-                      setFormErrors({ ...formErrors, judul: null });
-                    }
+                    if (formErrors.judul) setFormErrors({ ...formErrors, judul: null });
                   }}
-                  placeholder="Misal: Validasi filter transaksi"
-                  className={`w-full h-11 px-3 bg-white border rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none transition ${
+                  placeholder="Contoh: Implementasi halaman laporan"
+                  className={`w-full px-3.5 py-2.5 rounded-lg border text-xs md:text-sm text-slate-900 focus:outline-none ${
                     formErrors.judul
-                      ? 'border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 bg-rose-50/20'
-                      : 'border-slate-200 focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f]'
+                      ? 'border-rose-500 bg-rose-50/20'
+                      : 'border-slate-300 focus:ring-1 focus:ring-[#17362f]'
                   }`}
                 />
                 {formErrors.judul && (
-                  <p className="text-xs text-rose-600 mt-1 flex items-center gap-1">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    <span>{formErrors.judul}</span>
-                  </p>
+                  <p className="text-[11px] text-rose-600 mt-1">{formErrors.judul}</p>
                 )}
               </div>
 
-              {/* Field Deskripsi */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Deskripsi
+                  Deskripsi tugas
                 </label>
                 <textarea
-                  rows={4}
+                  rows={3}
+                  required
                   value={formData.deskripsi}
                   onChange={(e) => {
                     setFormData({ ...formData, deskripsi: e.target.value });
-                    if (formErrors.deskripsi) {
-                      setFormErrors({ ...formErrors, deskripsi: null });
-                    }
+                    if (formErrors.deskripsi) setFormErrors({ ...formErrors, deskripsi: null });
                   }}
-                  placeholder="Instruksi dan rincian penugasan peserta..."
-                  className={`w-full p-3 bg-white border rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none transition resize-none leading-relaxed ${
+                  placeholder="Rincikan instruksi atau kriteria pengerjaan..."
+                  className={`w-full px-3.5 py-2.5 rounded-lg border text-xs md:text-sm text-slate-900 focus:outline-none resize-none ${
                     formErrors.deskripsi
-                      ? 'border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 bg-rose-50/20'
-                      : 'border-slate-200 focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f]'
+                      ? 'border-rose-500 bg-rose-50/20'
+                      : 'border-slate-300 focus:ring-1 focus:ring-[#17362f]'
                   }`}
                 />
                 {formErrors.deskripsi && (
-                  <p className="text-xs text-rose-600 mt-1 flex items-center gap-1">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    <span>{formErrors.deskripsi}</span>
-                  </p>
+                  <p className="text-[11px] text-rose-600 mt-1">{formErrors.deskripsi}</p>
                 )}
               </div>
 
-              {/* Field Tenggat */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Tenggat
+                  Tenggat waktu
                 </label>
                 <input
                   type="date"
+                  required
                   value={formData.tenggat}
                   onChange={(e) => {
                     setFormData({ ...formData, tenggat: e.target.value });
-                    if (formErrors.tenggat) {
-                      setFormErrors({ ...formErrors, tenggat: null });
-                    }
+                    if (formErrors.tenggat) setFormErrors({ ...formErrors, tenggat: null });
                   }}
-                  className={`w-full h-11 px-3 bg-white border rounded-lg text-sm text-slate-800 font-medium focus:outline-none transition ${
+                  className={`w-full px-3.5 py-2.5 rounded-lg border text-xs md:text-sm text-slate-900 focus:outline-none ${
                     formErrors.tenggat
-                      ? 'border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 bg-rose-50/20'
-                      : 'border-slate-200 focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f]'
+                      ? 'border-rose-500 bg-rose-50/20'
+                      : 'border-slate-300 focus:ring-1 focus:ring-[#17362f]'
                   }`}
                 />
                 {formErrors.tenggat && (
-                  <p className="text-xs text-rose-600 mt-1 flex items-center gap-1">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    <span>{formErrors.tenggat}</span>
-                  </p>
+                  <p className="text-[11px] text-rose-600 mt-1">{formErrors.tenggat}</p>
                 )}
               </div>
 
-              {/* Action Buttons */}
               <div className="pt-2 flex items-center justify-between gap-3">
                 <button
                   type="button"
+                  disabled={submitting}
                   onClick={() => setShowAddModal(false)}
-                  className="px-5 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 rounded-lg text-sm font-semibold transition active:scale-95 shadow-2xs cursor-pointer"
+                  className="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-[#17362f] hover:bg-[#122b25] text-white rounded-lg text-sm font-semibold transition active:scale-95 shadow-2xs cursor-pointer"
+                  disabled={submitting}
+                  className="px-6 py-2.5 bg-[#17362f] hover:bg-[#122b25] disabled:bg-slate-400 text-white text-xs font-semibold rounded-lg shadow-xs transition flex items-center gap-2"
                 >
-                  Simpan Tugas
+                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <span>Beri Tugas</span>
                 </button>
               </div>
             </form>
@@ -500,85 +525,70 @@ export const AdminTasksPage = () => {
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* MODAL F08: Detail Tugas (Read Only)                     */}
-      {/* ======================================================== */}
+      {/* MODAL DETAIL TUGAS */}
       {selectedDetailTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xl max-w-lg w-full max-h-[92vh] flex flex-col overflow-hidden">
-            {/* Modal Header */}
-            <div className="p-6 pb-4 flex items-start justify-between border-b border-slate-100">
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-2xs animate-fadeIn">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative border border-slate-200">
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900 font-lexend">
+                <span className="text-[10px] font-bold text-[#17362f] uppercase tracking-wider">
                   Detail Tugas
-                </h2>
-                <p className="text-xs text-slate-500 mt-1">
-                  {selectedDetailTask.peserta} · {selectedDetailTask.email}
-                </p>
+                </span>
+                <h3 className="text-lg font-bold text-slate-900 leading-tight">
+                  {selectedDetailTask.judul}
+                </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedDetailTask(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition"
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-4 flex-1">
-              {/* Status Badge */}
-              <div>
-                {getStatusBadge(selectedDetailTask)}
+            <div className="space-y-4 text-xs text-slate-600">
+              <div className="flex justify-between py-1.5 border-b border-slate-100">
+                <span className="text-slate-400">Penerima:</span>
+                <span className="font-semibold text-slate-800">
+                  {selectedDetailTask.nama_anak_magang || `Peserta #${selectedDetailTask.intern_id}`}
+                </span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-100">
+                <span className="text-slate-400">Tenggat:</span>
+                <span className="font-semibold text-slate-800">
+                  {formatDateLong(selectedDetailTask.tenggat)}
+                </span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-100">
+                <span className="text-slate-400">Status:</span>
+                <span className="font-semibold text-slate-800">
+                  {selectedDetailTask.status === 'SELESAI' ? 'Selesai' : selectedDetailTask.terlambat ? 'Terlambat' : selectedDetailTask.status === 'DIKERJAKAN' ? 'Dikerjakan' : 'Belum Dikerjakan'}
+                </span>
               </div>
 
-              {/* Field Judul Tugas */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Judul tugas
-                </label>
-                <div className="p-3.5 bg-[#fbfcfb] border border-slate-200 rounded-lg text-sm font-medium text-slate-800">
-                  {selectedDetailTask.judul}
+                <span className="text-slate-400 block mb-1">Deskripsi:</span>
+                <div className="p-3 bg-slate-50 rounded-lg text-slate-700 leading-relaxed border border-slate-100 whitespace-pre-wrap">
+                  {selectedDetailTask.deskripsi}
                 </div>
               </div>
 
-              {/* Field Deskripsi */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Deskripsi
-                </label>
-                <div className="p-3.5 bg-[#fbfcfb] border border-slate-200 rounded-lg text-sm text-slate-700 leading-relaxed min-h-[80px]">
-                  {selectedDetailTask.deskripsi || '-'}
+              {selectedDetailTask.catatan_progres && (
+                <div>
+                  <span className="text-slate-400 block mb-1">Catatan Progres Anak Magang:</span>
+                  <div className="p-3 bg-[#eef6f2] rounded-lg text-[#17362f] leading-relaxed border border-[#d2e7dc]">
+                    {selectedDetailTask.catatan_progres}
+                  </div>
                 </div>
-              </div>
-
-              {/* Field Tenggat */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Tenggat
-                </label>
-                <div className="p-3.5 bg-[#fbfcfb] border border-slate-200 rounded-lg text-sm font-medium text-slate-800">
-                  {selectedDetailTask.tenggatFormatted || selectedDetailTask.tenggat}
-                </div>
-              </div>
-
-              {/* Field Catatan Progres Terbaru */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Catatan progres terbaru
-                </label>
-                <div className="p-3.5 bg-[#fbfcfb] border border-slate-200 rounded-lg text-sm text-slate-700 leading-relaxed min-h-[80px]">
-                  {selectedDetailTask.catatanProgres}
-                </div>
-              </div>
+              )}
             </div>
 
-            {/* Modal Footer */}
-            <div className="p-4 px-6 border-t border-slate-100 flex items-center justify-start bg-slate-50/50">
+            <div className="mt-6 pt-4 border-t border-slate-100 flex justify-end">
               <button
                 type="button"
                 onClick={() => setSelectedDetailTask(null)}
-                className="px-5 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 rounded-lg text-sm font-semibold transition active:scale-95 shadow-2xs cursor-pointer"
+                className="px-4 py-2 bg-[#17362f] text-white text-xs font-semibold rounded-lg hover:bg-[#122b25] transition"
               >
                 Tutup
               </button>
@@ -589,3 +599,5 @@ export const AdminTasksPage = () => {
     </div>
   );
 };
+
+export default AdminTasksPage;

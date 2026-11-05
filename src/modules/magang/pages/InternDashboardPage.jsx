@@ -1,95 +1,148 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Loader2, AlertCircle } from 'lucide-react';
 import { magangService } from '../services/magangService';
 
 export const InternDashboardPage = () => {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // State data inisial sesuai token Figma M-01
-  const [dashboardData, setDashboardData] = useState({
-    tanggalFormatted: 'Selasa, 20 Oktober 2026',
-    statusKerja: 'On-site',
-    tindakan: {
-      judul: 'Siap menyelesaikan absensi',
-      deskripsi: 'Check-in dan logbook sudah tersimpan. Ambil foto serta lokasi baru untuk check-out.',
-      aksiLabel: 'Lanjut Check-out',
-      targetUrl: '/magang/absensi',
-    },
-    statusHariIni: {
-      badge: 'Dalam proses',
-      steps: [
-        { id: 1, label: 'Check-in', waktu: '08.12 WIB', status: 'completed' },
-        { id: 2, label: 'Logbook', waktu: 'Tersimpan · 12.30 WIB', status: 'saved' },
-        { id: 3, label: 'Check-out', waktu: 'Belum dilakukan', status: 'pending' },
-      ],
-    },
-    masaMagang: {
-      sisaHari: 72,
-      tenggatFormatted: 'tersisa hingga 31 Desember 2026',
-      rentang: '1 Agustus — 31 Desember 2026',
-      persen: 60,
-    },
-    tenggatTerdekat: [
-      {
-        id: 1,
-        tanggal: '22',
-        bulan: 'OKT',
-        judul: 'Implementasi halaman laporan',
-        keterangan: 'Dikerjakan · Tenggat dalam 2 hari',
-        status: 'Dikerjakan',
-        statusType: 'success',
-      },
-      {
-        id: 2,
-        tanggal: '18',
-        bulan: 'OKT',
-        judul: 'Audit komponen formulir',
-        keterangan: 'Belum dikerjakan · Melewati tenggat',
-        status: 'Terlambat',
-        statusType: 'danger',
-      },
-    ],
-  });
+  const [internProfile, setInternProfile] = useState(null);
+  const [todayAttendance, setTodayAttendance] = useState(null);
+  const [myTasks, setMyTasks] = useState([]);
+
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [profileRes, attRes, tasksRes] = await Promise.allSettled([
+        magangService.getInternMe(),
+        magangService.getTodayAttendance(),
+        magangService.getMyTasks(),
+      ]);
+
+      if (profileRes.status === 'fulfilled') {
+        setInternProfile(profileRes.value?.data || null);
+      }
+      if (attRes.status === 'fulfilled') {
+        setTodayAttendance(attRes.value?.data || null);
+      }
+      if (tasksRes.status === 'fulfilled') {
+        setMyTasks(tasksRes.value?.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to load dashboard data:', err);
+      setError(err?.message || 'Gagal memuat ringkasan dashboard');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchRealData = async () => {
-      try {
-        const [todayAttRes] = await Promise.allSettled([
-          magangService.getTodayAttendance(),
-        ]);
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
-        if (todayAttRes.status === 'fulfilled' && todayAttRes.value?.data) {
-          const att = todayAttRes.value.data;
-          setDashboardData((prev) => ({
-            ...prev,
-            statusHariIni: {
-              ...prev.statusHariIni,
-              steps: [
-                {
-                  id: 1,
-                  label: 'Check-in',
-                  waktu: att.jam_masuk ? (att.jam_masuk + ' WIB') : 'Belum dilakukan',
-                  status: att.jam_masuk ? 'completed' : 'pending',
-                },
-                prev.statusHariIni.steps[1],
-                {
-                  id: 3,
-                  label: 'Check-out',
-                  waktu: att.jam_pulang ? (att.jam_pulang + ' WIB') : 'Belum dilakukan',
-                  status: att.jam_pulang ? 'completed' : 'pending',
-                },
-              ],
-            },
-          }));
-        }
-      } catch {
-        // Pertahankan tampilan token Figma
-      }
+  const formatDateLong = (dateObj = new Date()) => {
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const months = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+    ];
+    const dayName = days[dateObj.getDay()];
+    const dateNum = dateObj.getDate();
+    const monthName = months[dateObj.getMonth()];
+    const year = dateObj.getFullYear();
+    return `${dayName}, ${dateNum} ${monthName} ${year}`;
+  };
+
+  const formatShortDate = (dateStr) => {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  };
+
+  const formatTimeWIB = (timeStr) => {
+    if (!timeStr) return null;
+    try {
+      const d = new Date(timeStr);
+      if (isNaN(d.getTime())) return timeStr;
+      return d.toLocaleTimeString('id-ID', {
+        timeZone: 'Asia/Jakarta',
+        hour: '2-digit',
+        minute: '2-digit',
+      }) + ' WIB';
+    } catch {
+      return timeStr;
+    }
+  };
+
+  // Determine current action card
+  const getActionRecommendation = () => {
+    if (!todayAttendance) {
+      return {
+        judul: 'Mulai presensi hari ini',
+        deskripsi: 'Ambil foto wajah dan pastikan koordinat GPS aktif untuk melakukan check-in.',
+        aksiLabel: 'Mulai Check-in',
+        targetUrl: '/magang/absensi',
+      };
+    }
+
+    if (!todayAttendance.sudah_checkin) {
+      return {
+        judul: 'Belum melakukan check-in',
+        deskripsi: 'Ambil foto wajah dan lokasi terkini untuk membuka akses pengisian logbook.',
+        aksiLabel: 'Lakukan Check-in',
+        targetUrl: '/magang/absensi',
+      };
+    }
+
+    if (!todayAttendance.logbook_tersimpan) {
+      return {
+        judul: 'Isi logbook harian',
+        deskripsi: 'Check-in telah tercatat. Isi catatan aktivitas hari ini sebelum melakukan check-out.',
+        aksiLabel: 'Tulis Logbook',
+        targetUrl: '/magang/logbook',
+      };
+    }
+
+    if (!todayAttendance.sudah_checkout) {
+      return {
+        judul: 'Siap menyelesaikan absensi',
+        deskripsi: 'Check-in dan logbook sudah tersimpan. Ambil foto serta lokasi baru untuk check-out.',
+        aksiLabel: 'Lanjut Check-out',
+        targetUrl: '/magang/absensi',
+      };
+    }
+
+    return {
+      judul: 'Absensi hari ini lengkap',
+      deskripsi: 'Seluruh tahapan presensi dan logbook hari ini telah berhasil diselesaikan.',
+      aksiLabel: 'Lihat Absensi',
+      targetUrl: '/magang/absensi',
     };
+  };
 
-    fetchRealData();
-  }, []);
+  // Calculate internship progress percent
+  const getInternProgressPercent = () => {
+    if (!internProfile?.tanggal_mulai || !internProfile?.tanggal_selesai) return 50;
+    const start = new Date(internProfile.tanggal_mulai).getTime();
+    const end = new Date(internProfile.tanggal_selesai).getTime();
+    const now = new Date().getTime();
+    if (now <= start) return 0;
+    if (now >= end) return 100;
+    return Math.round(((now - start) / (end - start)) * 100);
+  };
+
+  const action = getActionRecommendation();
+  const progressPercent = getInternProgressPercent();
+  const statusKerjaLabel = internProfile?.status_kerja === 'REMOTE' ? 'Remote' : 'On-site';
+
+  const checkinTime = formatTimeWIB(todayAttendance?.absensi?.jam_checkin);
+  const checkoutTime = formatTimeWIB(todayAttendance?.absensi?.jam_checkout);
 
   return (
     <div className="space-y-6 w-full">
@@ -98,186 +151,249 @@ export const InternDashboardPage = () => {
         <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight font-lexend">
           Dashboard Saya
         </h1>
-        <p className="text-xs md:text-sm text-slate-500 mt-1 font-source-sans">
-          {dashboardData.tanggalFormatted} · Status kerja {dashboardData.statusKerja}
+        <p className="text-xs md:text-sm text-slate-500 mt-1">
+          {formatDateLong()} · {statusKerjaLabel}
         </p>
       </div>
 
-      {/* Tindakan Berikutnya - Hero Action Banner */}
-      <div className="bg-[#17362f] rounded-xl p-6 md:p-7 text-white flex flex-col md:flex-row md:items-center justify-between gap-5 shadow-sm">
-        <div className="space-y-1.5 max-w-2xl">
-          <p className="text-[11px] font-bold tracking-widest text-[#8eb8aa] uppercase font-source-sans">
-            TINDAKAN BERIKUTNYA
-          </p>
-          <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight font-lexend">
-            {dashboardData.tindakan.judul}
-          </h2>
-          <p className="text-xs md:text-sm text-[#9ebcb0] leading-relaxed font-source-sans">
-            {dashboardData.tindakan.deskripsi}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => navigate(dashboardData.tindakan.targetUrl)}
-          className="self-start md:self-auto px-5 py-2.5 bg-white hover:bg-[#f2f6f4] active:scale-[0.99] text-[#17362f] text-sm font-semibold rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer shrink-0 font-source-sans"
-        >
-          <span>{dashboardData.tindakan.aksiLabel}</span>
-          <ChevronRight className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Grid 2 Kolom: Status hari ini & Masa magang */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Card 1: Status hari ini */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <h3 className="text-base font-bold text-slate-900 font-lexend">
-                Status hari ini
-              </h3>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#fef7ee] text-[#b45309] border border-[#fed7aa] font-source-sans">
-                {dashboardData.statusHariIni.badge}
-              </span>
-            </div>
-
-            {/* Stepper Timeline */}
-            <div className="mt-6 space-y-1">
-              {dashboardData.statusHariIni.steps.map((step, idx) => {
-                const isFirst = idx === 0;
-                const isLast = idx === dashboardData.statusHariIni.steps.length - 1;
-
-                return (
-                  <div key={step.id} className="flex items-start gap-4">
-                    {/* Kolom Indikator & Garis */}
-                    <div className="flex flex-col items-center">
-                      <div
-                        className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                          isFirst
-                            ? 'bg-[#17362f] text-white shadow-xs'
-                            : 'bg-white border border-slate-300 text-slate-600'
-                        }`}
-                      >
-                        {step.id}
-                      </div>
-                      {!isLast && (
-                        <div className="w-0.5 h-7 bg-slate-200 my-1" />
-                      )}
-                    </div>
-
-                    {/* Kolom Teks */}
-                    <div className="pt-0.5">
-                      <p
-                        className={`text-sm font-bold leading-tight font-source-sans ${
-                          isFirst ? 'text-slate-900' : 'text-slate-800'
-                        }`}
-                      >
-                        {step.label}
-                      </p>
-                      <p className="text-xs text-slate-500 mt-0.5 font-source-sans">
-                        {step.waktu}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Card 2: Masa magang */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs">
-          <div>
-            <p className="text-sm font-medium text-slate-500 font-source-sans">
-              Masa magang
-            </p>
-            <h3 className="text-3xl md:text-4xl font-extrabold text-slate-900 mt-2 tracking-tight font-lexend">
-              {dashboardData.masaMagang.sisaHari} hari
-            </h3>
-            <p className="text-xs text-slate-500 mt-1 font-source-sans">
-              {dashboardData.masaMagang.tenggatFormatted}
-            </p>
-          </div>
-
-          <div className="mt-5">
-            {/* Progress Bar */}
-            <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[#17362f] rounded-full transition-all duration-500"
-                style={{ width: `${dashboardData.masaMagang.persen}%` }}
-              />
-            </div>
-            <p className="text-xs text-slate-500 mt-2.5 font-medium font-source-sans">
-              {dashboardData.masaMagang.rentang}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Card 3: Tenggat terdekat */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-          <div>
-            <h3 className="text-base font-bold text-slate-900 font-lexend">
-              Tenggat terdekat
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5 font-source-sans">
-              Tugas yang perlu mendapat perhatian.
-            </p>
+      {/* Error Alert */}
+      {error && (
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs md:text-sm flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+            <span>{error}</span>
           </div>
           <button
             type="button"
-            onClick={() => navigate('/magang/tugas')}
-            className="text-xs font-semibold text-[#17362f] hover:underline cursor-pointer font-source-sans"
+            onClick={fetchDashboardData}
+            className="px-3 py-1 bg-white border border-rose-300 rounded text-xs font-semibold"
           >
-            Lihat semua
+            Coba lagi
           </button>
         </div>
+      )}
 
-        <div className="divide-y divide-slate-100">
-          {dashboardData.tenggatTerdekat.map((item) => (
-            <div
-              key={item.id}
-              className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-            >
-              <div className="flex items-center gap-3.5">
-                {/* Kotak Tanggal */}
-                <div className="w-11 h-11 bg-slate-50 border border-slate-200 rounded-xl flex flex-col items-center justify-center shrink-0">
-                  <span className="text-sm font-bold text-slate-800 leading-none">
-                    {item.tanggal}
-                  </span>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none mt-1">
-                    {item.bulan}
-                  </span>
-                </div>
-
-                {/* Konten Tugas */}
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900 font-source-sans">
-                    {item.judul}
-                  </h4>
-                  <p className="text-xs text-slate-500 mt-0.5 font-source-sans">
-                    {item.keterangan}
-                  </p>
-                </div>
-              </div>
-
-              {/* Status Badge */}
-              <div className="self-start sm:self-auto">
-                {item.statusType === 'danger' ? (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#fef2f2] text-[#b91c1c] border border-[#fecaca] font-source-sans">
-                    {item.status}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#e7f5ec] text-[#176a43] border border-[#c6e9d4] font-source-sans">
-                    {item.status}
-                  </span>
-                )}
+      {loading ? (
+        <div className="py-20 text-center text-slate-400">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto text-[#17362f] mb-3" />
+          <p className="text-sm">Memuat informasi dashboard...</p>
+        </div>
+      ) : (
+        <>
+          {/* Card Aksi Utama (Hero Card) */}
+          <div className="bg-white rounded-xl border border-slate-200/90 p-6 md:p-8 shadow-2xs">
+            <div className="max-w-2xl space-y-3">
+              <span className="text-[11px] font-bold text-[#17362f] tracking-wider uppercase">
+                Tindakan Hari Ini
+              </span>
+              <h2 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight font-lexend">
+                {action.judul}
+              </h2>
+              <p className="text-xs md:text-sm text-slate-600 leading-relaxed">
+                {action.deskripsi}
+              </p>
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => navigate(action.targetUrl)}
+                  className="px-5 py-2.5 bg-[#17362f] hover:bg-[#122b25] text-white text-xs md:text-sm font-semibold rounded-lg shadow-xs transition"
+                >
+                  {action.aksiLabel}
+                </button>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+
+          {/* Grid Dua Kolom: Status Hari Ini & Masa Magang */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+            {/* Card 1: Status Hari Ini */}
+            <div className="bg-white rounded-xl border border-slate-200/90 p-6 md:p-7 shadow-2xs flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="text-base font-semibold text-slate-900 font-lexend">
+                    Status hari ini
+                  </h3>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                    todayAttendance?.sudah_checkout
+                      ? 'bg-[#e7f5ec] text-[#206941]'
+                      : todayAttendance?.sudah_checkin
+                      ? 'bg-amber-50 text-amber-700'
+                      : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {todayAttendance?.sudah_checkout
+                      ? 'Selesai'
+                      : todayAttendance?.sudah_checkin
+                      ? 'Dalam proses'
+                      : 'Belum mulai'}
+                  </span>
+                </div>
+
+                {/* Stepper Timeline */}
+                <div className="space-y-5">
+                  {/* Step 1: Check-in */}
+                  <div className="flex items-start gap-4">
+                    <div className={`w-7 h-7 rounded-full font-bold text-xs flex items-center justify-center shrink-0 mt-0.5 ${
+                      todayAttendance?.sudah_checkin
+                        ? 'bg-[#e7f5ec] text-[#206941]'
+                        : 'border border-slate-300 text-slate-400'
+                    }`}>
+                      1
+                    </div>
+                    <div>
+                      <p className="font-bold text-xs md:text-sm text-slate-800">Check-in</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {checkinTime || 'Belum dilakukan'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 2: Logbook */}
+                  <div className="flex items-start gap-4">
+                    <div className={`w-7 h-7 rounded-full font-bold text-xs flex items-center justify-center shrink-0 mt-0.5 ${
+                      todayAttendance?.logbook_tersimpan
+                        ? 'bg-[#e7f5ec] text-[#206941]'
+                        : 'border border-slate-300 text-slate-400'
+                    }`}>
+                      2
+                    </div>
+                    <div>
+                      <p className="font-bold text-xs md:text-sm text-slate-800">Logbook</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {todayAttendance?.logbook_tersimpan ? 'Sudah tersimpan' : 'Belum diisi'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 3: Check-out */}
+                  <div className="flex items-start gap-4">
+                    <div className={`w-7 h-7 rounded-full font-bold text-xs flex items-center justify-center shrink-0 mt-0.5 ${
+                      todayAttendance?.sudah_checkout
+                        ? 'bg-[#e7f5ec] text-[#206941]'
+                        : 'border border-slate-300 text-slate-400'
+                    }`}>
+                      3
+                    </div>
+                    <div>
+                      <p className="font-bold text-xs md:text-sm text-slate-800">Check-out</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {checkoutTime || 'Belum dilakukan'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 2: Masa Magang */}
+            <div className="bg-white rounded-xl border border-slate-200/90 p-6 md:p-7 shadow-2xs flex flex-col justify-between">
+              <div>
+                <h3 className="text-base font-semibold text-slate-900 font-lexend mb-4">
+                  Masa magang
+                </h3>
+
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight font-lexend">
+                    {internProfile?.sisa_hari ?? 0}
+                  </span>
+                  <span className="text-sm font-semibold text-slate-500">
+                    hari tersisa
+                  </span>
+                </div>
+
+                <p className="text-xs text-slate-500 mb-6">
+                  {internProfile?.tanggal_selesai
+                    ? `tersisa hingga ${formatShortDate(internProfile.tanggal_selesai)}`
+                    : 'Periode belum ditentukan'}
+                </p>
+
+                {/* Progress Bar */}
+                <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden mb-2">
+                  <div
+                    className="bg-[#17362f] h-full rounded-full transition-all duration-500"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+
+                <div className="flex justify-between items-center text-[11px] text-slate-400 font-medium">
+                  <span>{formatShortDate(internProfile?.tanggal_mulai)}</span>
+                  <span>{formatShortDate(internProfile?.tanggal_selesai)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Card Bawah: Tugas Mendatang / Berjalan */}
+          <div className="bg-white rounded-xl border border-slate-200/90 p-6 md:p-7 shadow-2xs">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="text-base font-semibold text-slate-900 font-lexend">
+                  Tugas Saya
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Daftar tugas yang diberikan pembimbing untuk Anda.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/magang/tugas')}
+                className="text-xs font-semibold text-[#17362f] hover:underline flex items-center gap-1"
+              >
+                <span>Lihat Semua</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {myTasks.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-400">
+                Belum ada tugas yang diberikan kepada Anda saat ini.
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {myTasks.slice(0, 3).map((task) => {
+                  const isSelesai = task.status === 'SELESAI';
+                  const isTerlambat = Boolean(task.terlambat);
+
+                  let statusBadge = 'bg-amber-50 text-amber-700';
+                  let statusText = 'Dikerjakan';
+                  if (isSelesai) {
+                    statusBadge = 'bg-[#e7f5ec] text-[#206941]';
+                    statusText = 'Selesai';
+                  } else if (isTerlambat) {
+                    statusBadge = 'bg-rose-50 text-rose-700';
+                    statusText = 'Terlambat';
+                  } else if (task.status === 'BELUM_DIKERJAKAN') {
+                    statusBadge = 'bg-slate-100 text-slate-600';
+                    statusText = 'Belum Dikerjakan';
+                  }
+
+                  return (
+                    <div
+                      key={task.id}
+                      onClick={() => navigate('/magang/tugas')}
+                      className="py-3.5 flex items-center justify-between gap-4 hover:bg-slate-50/80 px-2 rounded-lg cursor-pointer transition"
+                    >
+                      <div>
+                        <h4 className="font-semibold text-slate-800 text-xs md:text-sm">
+                          {task.judul}
+                        </h4>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Tenggat: {formatShortDate(task.tenggat)}
+                        </p>
+                      </div>
+
+                      <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold shrink-0 ${statusBadge}`}>
+                        {statusText}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 };
+
+export default InternDashboardPage;

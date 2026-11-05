@@ -1,48 +1,21 @@
 import { useToast } from '../../../context/ToastContext';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Plus,
   X,
+  Loader2,
+  AlertCircle,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
+import { magangService } from '../services/magangService';
 
 export const AdminInternsPage = () => {
-  // Data Peserta Magang
-  const [interns, setInterns] = useState([
-    {
-      id: 1,
-      nama: 'Raka Aditya',
-      email: 'raka@metro.demo',
-      kampus: 'Universitas Negeri Yogyakarta',
-      tanggal_mulai: '2026-08-01',
-      tanggal_selesai: '2026-12-31',
-      periodeFormatted: '01 Agu—31 Des 2026',
-      status_kerja: 'On-site',
-      status_periode: 'Aktif',
-    },
-    {
-      id: 2,
-      nama: 'Salsa Maharani',
-      email: 'salsa@metro.demo',
-      kampus: 'Universitas Gadjah Mada',
-      tanggal_mulai: '2026-09-15',
-      tanggal_selesai: '2027-01-15',
-      periodeFormatted: '15 Sep 2026—15 Jan 2027',
-      status_kerja: 'Remote',
-      status_periode: 'Aktif',
-    },
-    {
-      id: 3,
-      nama: 'Dimas Saputra',
-      email: 'dimas@metro.demo',
-      kampus: 'Universitas Amikom',
-      tanggal_mulai: '2026-06-01',
-      tanggal_selesai: '2026-09-30',
-      periodeFormatted: '01 Jun 2026—30 Sep 2026',
-      status_kerja: 'On-site',
-      status_periode: 'Berakhir',
-    },
-  ]);
+  const [interns, setInterns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   // State untuk data akun terhubung setelah F01 (Tambah)
   const [lastAddedAccount, setLastAddedAccount] = useState(null);
@@ -60,12 +33,14 @@ export const AdminInternsPage = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedIntern, setSelectedIntern] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
     nama: '',
     kampus: '',
     email: '',
+    password: '',
     tanggal_mulai: '',
     tanggal_selesai: '',
     status_kerja: 'Remote',
@@ -73,29 +48,29 @@ export const AdminInternsPage = () => {
 
   const [formErrors, setFormErrors] = useState({});
 
-  // Filter Data
-  const filteredInterns = useMemo(() => {
-    return interns.filter((intern) => {
-      const matchSearch =
-        intern.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        intern.kampus.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        intern.email.toLowerCase().includes(searchQuery.toLowerCase());
+  const fetchInterns = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await magangService.getAllInterns();
+      const data = res?.data || [];
+      setInterns(data);
+    } catch (err) {
+      console.error('Failed to load interns:', err);
+      setError(err?.message || 'Gagal memuat data anak magang');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-      const matchStatusKerja =
-        filterStatusKerja === 'Semua status kerja' ||
-        intern.status_kerja.toLowerCase() === filterStatusKerja.toLowerCase();
-
-      const matchPeriode =
-        filterPeriode === 'Semua periode' ||
-        intern.status_periode.toLowerCase() === filterPeriode.toLowerCase();
-
-      return matchSearch && matchStatusKerja && matchPeriode;
-    });
-  }, [interns, searchQuery, filterStatusKerja, filterPeriode]);
+  useEffect(() => {
+    fetchInterns();
+  }, [fetchInterns]);
 
   const formatDateToID = (dateStr) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
     const d = String(date.getDate()).padStart(2, '0');
     const m = months[date.getMonth()];
@@ -103,34 +78,61 @@ export const AdminInternsPage = () => {
     return `${d} ${m} ${y}`;
   };
 
+  // Filter Data
+  const filteredInterns = useMemo(() => {
+    return interns.filter((intern) => {
+      const nama = intern.nama || '';
+      const kampus = intern.asal_kampus || intern.kampus || '';
+      const email = intern.email || '';
+      const statusKerjaNormalized = intern.status_kerja === 'ONSITE' ? 'On-site' : 'Remote';
+      const statusPeriode = intern.masa_magang_aktif ? 'Aktif' : 'Berakhir';
+
+      const matchSearch =
+        nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        kampus.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        email.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchStatusKerja =
+        filterStatusKerja === 'Semua status kerja' ||
+        statusKerjaNormalized.toLowerCase() === filterStatusKerja.toLowerCase();
+
+      const matchPeriode =
+        filterPeriode === 'Semua periode' ||
+        statusPeriode.toLowerCase() === filterPeriode.toLowerCase();
+
+      return matchSearch && matchStatusKerja && matchPeriode;
+    });
+  }, [interns, searchQuery, filterStatusKerja, filterPeriode]);
+
   // Buka Modal Tambah (F01)
   const handleOpenAddModal = () => {
+    const today = new Date().toISOString().split('T')[0];
     setFormData({
-      nama: 'Nabila Putri',
-      kampus: 'Universitas Negeri Yogyakarta',
-      email: 'nabila@metro.demo',
-      tanggal_mulai: '2026-10-20',
-      tanggal_selesai: '2026-12-31',
+      nama: '',
+      kampus: '',
+      email: '',
+      password: '',
+      tanggal_mulai: today,
+      tanggal_selesai: '',
       status_kerja: 'Remote',
     });
     setFormErrors({});
+    setShowPassword(false);
     setShowAddModal(true);
   };
 
   // Simpan Tambah Anak Magang (F01)
-  const handleSaveAdd = (e) => {
+  const handleSaveAdd = async (e) => {
     e.preventDefault();
     const errors = {};
 
-    // Validasi 1: Cek apakah email sudah digunakan
-    const emailExist = interns.some(
-      (item) => item.email.toLowerCase() === formData.email.trim().toLowerCase()
-    );
-    if (emailExist) {
-      errors.email = 'Email sudah digunakan. Gunakan email lain untuk peserta baru.';
+    if (!formData.nama.trim()) errors.nama = 'Nama lengkap wajib diisi.';
+    if (!formData.kampus.trim()) errors.kampus = 'Asal kampus wajib diisi.';
+    if (!formData.email.trim()) errors.email = 'Email wajib diisi.';
+    if (!formData.password || formData.password.length < 8) {
+      errors.password = 'Password minimal 8 karakter.';
     }
 
-    // Validasi 2: Periode tidak valid
     if (formData.tanggal_mulai && formData.tanggal_selesai) {
       if (new Date(formData.tanggal_selesai) < new Date(formData.tanggal_mulai)) {
         errors.tanggal_selesai = 'Tanggal selesai harus sama dengan atau setelah tanggal mulai.';
@@ -142,62 +144,75 @@ export const AdminInternsPage = () => {
       return;
     }
 
-    const newIntern = {
-      id: Date.now(),
-      nama: formData.nama.trim(),
-      email: formData.email.trim(),
-      kampus: formData.kampus.trim(),
-      tanggal_mulai: formData.tanggal_mulai,
-      tanggal_selesai: formData.tanggal_selesai,
-      periodeFormatted: `${formatDateToID(formData.tanggal_mulai)}—${formatDateToID(formData.tanggal_selesai)}`,
-      status_kerja: formData.status_kerja === 'Remote' ? 'Remote' : 'On-site',
-      status_periode: new Date(formData.tanggal_selesai) >= new Date() ? 'Aktif' : 'Berakhir',
-    };
+    try {
+      setSubmitting(true);
+      const payload = {
+        nama: formData.nama.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+        asal_kampus: formData.kampus.trim(),
+        tanggal_mulai: formData.tanggal_mulai,
+        tanggal_selesai: formData.tanggal_selesai,
+        status_kerja: formData.status_kerja === 'On-site' ? 'ONSITE' : 'REMOTE',
+      };
 
-    setInterns([...interns, newIntern]);
-    setShowAddModal(false);
+      const res = await magangService.createIntern(payload);
+      setShowAddModal(false);
 
-    // Banner & Akun Terhubung sesuai Figma AFTER F01
-    showToast({
-      title: `${newIntern.nama} berhasil ditambahkan`,
-      message: `Akun ${newIntern.email} terhubung dengan peserta ${newIntern.nama}.`,
-    });
-    setLastAddedAccount({
-      nama: newIntern.nama,
-      email: newIntern.email,
-      role: 'Anak Magang',
-      status: 'Aktif',
-    });
+      showToast({
+        title: `${payload.nama} berhasil ditambahkan`,
+        message: `Akun ${payload.email} terhubung dengan peserta ${payload.nama}.`,
+      });
+
+      setLastAddedAccount({
+        nama: payload.nama,
+        email: payload.email,
+        role: 'Anak Magang',
+        status: 'Aktif',
+      });
+
+      await fetchInterns();
+    } catch (err) {
+      console.error('Failed to create intern:', err);
+      const errMsg = err?.message || 'Gagal menambahkan data anak magang';
+      if (err?.details && Array.isArray(err.details)) {
+        const fieldErrors = {};
+        err.details.forEach((d) => {
+          fieldErrors[d.field] = d.message;
+        });
+        setFormErrors(fieldErrors);
+      } else {
+        setFormErrors({ general: errMsg });
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Buka Modal Ubah (F02)
   const handleOpenEditModal = (intern) => {
     setSelectedIntern(intern);
     setFormData({
-      nama: intern.nama,
-      kampus: intern.kampus,
-      email: intern.email,
-      tanggal_mulai: intern.tanggal_mulai,
-      tanggal_selesai: intern.tanggal_selesai,
-      status_kerja: intern.status_kerja,
+      nama: intern.nama || '',
+      kampus: intern.asal_kampus || intern.kampus || '',
+      email: intern.email || '',
+      password: '',
+      tanggal_mulai: intern.tanggal_mulai || '',
+      tanggal_selesai: intern.tanggal_selesai || '',
+      status_kerja: intern.status_kerja === 'ONSITE' ? 'On-site' : 'Remote',
     });
     setFormErrors({});
     setShowEditModal(true);
   };
 
   // Simpan Ubah Anak Magang (F02)
-  const handleSaveEdit = (e) => {
+  const handleSaveEdit = async (e) => {
     e.preventDefault();
     const errors = {};
 
-    const emailExist = interns.some(
-      (item) =>
-        item.id !== selectedIntern.id &&
-        item.email.toLowerCase() === formData.email.trim().toLowerCase()
-    );
-    if (emailExist) {
-      errors.email = 'Email sudah digunakan. Gunakan email lain.';
-    }
+    if (!formData.nama.trim()) errors.nama = 'Nama lengkap wajib diisi.';
+    if (!formData.kampus.trim()) errors.kampus = 'Asal kampus wajib diisi.';
+    if (!formData.email.trim()) errors.email = 'Email wajib diisi.';
 
     if (new Date(formData.tanggal_selesai) < new Date(formData.tanggal_mulai)) {
       errors.tanggal_selesai = 'Tanggal selesai harus sama dengan atau setelah tanggal mulai.';
@@ -208,34 +223,52 @@ export const AdminInternsPage = () => {
       return;
     }
 
-    const updated = {
-      ...selectedIntern,
-      nama: formData.nama.trim(),
-      email: formData.email.trim(),
-      kampus: formData.kampus.trim(),
-      tanggal_mulai: formData.tanggal_mulai,
-      tanggal_selesai: formData.tanggal_selesai,
-      periodeFormatted: `${formatDateToID(formData.tanggal_mulai)}—${formatDateToID(formData.tanggal_selesai)}`,
-      status_kerja: formData.status_kerja,
-      status_periode: new Date(formData.tanggal_selesai) >= new Date() ? 'Aktif' : 'Berakhir',
-    };
+    try {
+      setSubmitting(true);
+      const payload = {
+        nama: formData.nama.trim(),
+        email: formData.email.trim(),
+        asal_kampus: formData.kampus.trim(),
+        tanggal_mulai: formData.tanggal_mulai,
+        tanggal_selesai: formData.tanggal_selesai,
+      };
 
-    setInterns(interns.map((item) => (item.id === selectedIntern.id ? updated : item)));
-    setShowEditModal(false);
+      await magangService.updateIntern(selectedIntern.id, payload);
 
-    // Banner sesuai Figma AFTER F02
-    showToast({
-      title: `Data ${updated.nama} tersimpan`,
-      message: `Perubahan diterapkan pada peserta yang sama. Akun ${updated.email} tetap terhubung.`,
-    });
-    setLastAddedAccount(null);
+      const newStatusKerjaEnum = formData.status_kerja === 'On-site' ? 'ONSITE' : 'REMOTE';
+      if (selectedIntern.status_kerja !== newStatusKerjaEnum) {
+        await magangService.updateStatusKerja(selectedIntern.id, newStatusKerjaEnum);
+      }
+
+      setShowEditModal(false);
+
+      showToast({
+        title: `Data ${payload.nama} tersimpan`,
+        message: `Perubahan diterapkan pada peserta. Akun ${payload.email} tetap terhubung.`,
+      });
+      setLastAddedAccount(null);
+
+      await fetchInterns();
+    } catch (err) {
+      console.error('Failed to update intern:', err);
+      const errMsg = err?.message || 'Gagal mengubah data anak magang';
+      if (err?.details && Array.isArray(err.details)) {
+        const fieldErrors = {};
+        err.details.forEach((d) => {
+          fieldErrors[d.field] = d.message;
+        });
+        setFormErrors(fieldErrors);
+      } else {
+        setFormErrors({ general: errMsg });
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <div className="space-y-6">
-      
-
-      {/* Header Halaman Sesuai Figma */}
+      {/* Header Halaman */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 tracking-tight font-lexend">
@@ -254,6 +287,23 @@ export const AdminInternsPage = () => {
           <span>Tambah Anak Magang</span>
         </button>
       </div>
+
+      {/* Error Alert */}
+      {error && (
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs md:text-sm flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={fetchInterns}
+            className="px-3 py-1 bg-white border border-rose-300 rounded-lg text-rose-700 hover:bg-rose-50 font-medium text-xs transition"
+          >
+            Coba lagi
+          </button>
+        </div>
+      )}
 
       {/* Filter Bar */}
       <div className="bg-white rounded-xl border border-slate-200/90 p-3 shadow-2xs flex flex-col md:flex-row items-center gap-3">
@@ -307,45 +357,71 @@ export const AdminInternsPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {filteredInterns.map((intern) => (
-                <tr key={intern.id} className="hover:bg-slate-50/80 transition">
-                  <td className="px-5 py-4">
-                    <p className="font-bold text-slate-900 leading-snug">
-                      {intern.nama} · <span className="font-normal font-mono text-slate-500">{intern.email}</span>
-                    </p>
-                  </td>
-                  <td className="px-5 py-4 text-slate-600 font-medium">
-                    {intern.kampus}
-                  </td>
-                  <td className="px-5 py-4 text-slate-600 whitespace-nowrap">
-                    {intern.periodeFormatted}
-                  </td>
-                  <td className="px-5 py-4 text-slate-700 font-medium">
-                    {intern.status_kerja}
-                  </td>
-                  <td className="px-5 py-4">
-                    <span
-                      className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                        intern.status_periode === 'Aktif'
-                          ? 'bg-[#e7f5ec] text-[#206941]'
-                          : 'bg-slate-100 text-slate-500'
-                      }`}
-                    >
-                      {intern.status_periode}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4 text-right whitespace-nowrap font-medium">
-                    <Link to={`/admin/magang/interns/${intern.id}`} className="text-[#17362f] hover:text-[#285e51] hover:underline mr-4 transition">Lihat Detail</Link>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEditModal(intern)}
-                      className="text-[#17362f] hover:text-[#285e51] hover:underline transition"
-                    >
-                      Ubah
-                    </button>
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-5 py-12 text-center text-slate-400">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#17362f] mb-2" />
+                    <span>Memuat data anak magang...</span>
                   </td>
                 </tr>
-              ))}
+              ) : filteredInterns.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-5 py-10 text-center text-slate-400">
+                    Belum ada data anak magang.
+                  </td>
+                </tr>
+              ) : (
+                filteredInterns.map((intern) => {
+                  const statusKerjaLabel = intern.status_kerja === 'ONSITE' ? 'On-site' : 'Remote';
+                  const isAktif = intern.masa_magang_aktif ?? true;
+                  const periodeText = `${formatDateToID(intern.tanggal_mulai)}—${formatDateToID(intern.tanggal_selesai)}`;
+
+                  return (
+                    <tr key={intern.id} className="hover:bg-slate-50/80 transition">
+                      <td className="px-5 py-4">
+                        <p className="font-bold text-slate-900 leading-snug">
+                          {intern.nama} · <span className="font-normal font-mono text-slate-500">{intern.email}</span>
+                        </p>
+                      </td>
+                      <td className="px-5 py-4 text-slate-600 font-medium">
+                        {intern.asal_kampus || intern.kampus || '-'}
+                      </td>
+                      <td className="px-5 py-4 text-slate-600 whitespace-nowrap">
+                        {periodeText}
+                      </td>
+                      <td className="px-5 py-4 text-slate-700 font-medium">
+                        {statusKerjaLabel}
+                      </td>
+                      <td className="px-5 py-4">
+                        <span
+                          className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                            isAktif
+                              ? 'bg-[#e7f5ec] text-[#206941]'
+                              : 'bg-slate-100 text-slate-500'
+                          }`}
+                        >
+                          {isAktif ? 'Aktif' : 'Berakhir'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-right whitespace-nowrap font-medium">
+                        <Link
+                          to={`/admin/magang/interns/${intern.id}`}
+                          className="text-[#17362f] hover:text-[#285e51] hover:underline mr-4 transition"
+                        >
+                          Lihat Detail
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditModal(intern)}
+                          className="text-[#17362f] hover:text-[#285e51] hover:underline transition"
+                        >
+                          Ubah
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -356,7 +432,7 @@ export const AdminInternsPage = () => {
         </div>
       </div>
 
-      {/* Tabel Akun Terhubung (Tampil jika baru saja menambah peserta sesuai Figma) */}
+      {/* Tabel Akun Terhubung */}
       {lastAddedAccount && (
         <div className="space-y-2 animate-fadeIn">
           <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
@@ -392,12 +468,10 @@ export const AdminInternsPage = () => {
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* MODAL 1: Tambah Anak Magang (F01)                        */}
-      {/* ======================================================== */}
+      {/* MODAL 1: Tambah Anak Magang (F01) */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-2xs animate-fadeIn">
-          <div className="bg-white rounded-xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative border border-slate-200">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative border border-slate-200 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-xl font-semibold text-slate-900 font-lexend">
                 Tambah Anak Magang
@@ -411,6 +485,13 @@ export const AdminInternsPage = () => {
               </button>
             </div>
 
+            {formErrors.general && (
+              <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{formErrors.general}</span>
+              </div>
+            )}
+
             <form onSubmit={handleSaveAdd} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -421,9 +502,12 @@ export const AdminInternsPage = () => {
                   required
                   value={formData.nama}
                   onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
-                  placeholder="Nabila Putri"
+                  placeholder="Nama lengkap peserta"
                   className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs md:text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#17362f] focus:border-[#17362f]"
                 />
+                {formErrors.nama && (
+                  <p className="text-[11px] text-rose-600 mt-1">{formErrors.nama}</p>
+                )}
               </div>
 
               <div>
@@ -435,14 +519,17 @@ export const AdminInternsPage = () => {
                   required
                   value={formData.kampus}
                   onChange={(e) => setFormData({ ...formData, kampus: e.target.value })}
-                  placeholder="Universitas Negeri Yogyakarta"
+                  placeholder="Nama universitas / institut"
                   className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs md:text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#17362f] focus:border-[#17362f]"
                 />
+                {formErrors.kampus && (
+                  <p className="text-[11px] text-rose-600 mt-1">{formErrors.kampus}</p>
+                )}
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Email
+                  Email akun
                 </label>
                 <input
                   type="email"
@@ -452,7 +539,7 @@ export const AdminInternsPage = () => {
                     setFormData({ ...formData, email: e.target.value });
                     if (formErrors.email) setFormErrors({ ...formErrors, email: null });
                   }}
-                  placeholder="nabila@metro.demo"
+                  placeholder="peserta@kampus.ac.id"
                   className={`w-full px-3.5 py-2.5 rounded-lg border text-xs md:text-sm text-slate-900 focus:outline-none ${
                     formErrors.email
                       ? 'border-rose-500 bg-rose-50/20'
@@ -461,6 +548,39 @@ export const AdminInternsPage = () => {
                 />
                 {formErrors.email && (
                   <p className="text-[11px] text-rose-600 mt-1">{formErrors.email}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Password akun awal
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={formData.password}
+                    onChange={(e) => {
+                      setFormData({ ...formData, password: e.target.value });
+                      if (formErrors.password) setFormErrors({ ...formErrors, password: null });
+                    }}
+                    placeholder="Minimal 8 karakter"
+                    className={`w-full px-3.5 py-2.5 pr-10 rounded-lg border text-xs md:text-sm text-slate-900 focus:outline-none ${
+                      formErrors.password
+                        ? 'border-rose-500 bg-rose-50/20'
+                        : 'border-slate-300 focus:ring-1 focus:ring-[#17362f] focus:border-[#17362f]'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {formErrors.password && (
+                  <p className="text-[11px] text-rose-600 mt-1">{formErrors.password}</p>
                 )}
               </div>
 
@@ -545,13 +665,14 @@ export const AdminInternsPage = () => {
               <div className="p-3.5 rounded-xl bg-[#eef6f2] border border-[#d2e7dc] text-xs text-[#20493e]">
                 <p className="font-bold text-[#17362f]">Akun dibuat bersama peserta</p>
                 <p className="text-[11px] text-[#3d6559] mt-0.5">
-                  Email ini digunakan untuk akun Anak Magang yang terhubung dengan peserta.
+                  Email dan password ini akan langsung dapat digunakan oleh peserta untuk masuk ke MetroHub.
                 </p>
               </div>
 
               <div className="pt-2 flex items-center justify-between gap-3">
                 <button
                   type="button"
+                  disabled={submitting}
                   onClick={() => setShowAddModal(false)}
                   className="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition"
                 >
@@ -559,9 +680,11 @@ export const AdminInternsPage = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-[#17362f] hover:bg-[#122b25] text-white text-xs font-semibold rounded-lg shadow-xs transition"
+                  disabled={submitting}
+                  className="px-6 py-2.5 bg-[#17362f] hover:bg-[#122b25] disabled:bg-slate-400 text-white text-xs font-semibold rounded-lg shadow-xs transition flex items-center gap-2"
                 >
-                  Simpan Peserta
+                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <span>Simpan Peserta</span>
                 </button>
               </div>
             </form>
@@ -569,12 +692,10 @@ export const AdminInternsPage = () => {
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* MODAL 2: Ubah Data Anak Magang (F02)                     */}
-      {/* ======================================================== */}
+      {/* MODAL 2: Ubah Data Anak Magang (F02) */}
       {showEditModal && selectedIntern && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-2xs animate-fadeIn">
-          <div className="bg-white rounded-xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative border border-slate-200">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative border border-slate-200 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-xl font-semibold text-slate-900 font-lexend">
                 Ubah Data Anak Magang
@@ -587,6 +708,13 @@ export const AdminInternsPage = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {formErrors.general && (
+              <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{formErrors.general}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSaveEdit} className="space-y-4">
               <div>
@@ -717,15 +845,16 @@ export const AdminInternsPage = () => {
               </div>
 
               <div className="p-3.5 rounded-xl bg-[#eef6f2] border border-[#d2e7dc] text-xs text-[#20493e]">
-                <p className="font-bold text-[#17362f]">Memperbarui peserta yang sama</p>
+                <p className="font-bold text-[#17362f]">Memperbarui peserta</p>
                 <p className="text-[11px] text-[#3d6559] mt-0.5">
-                  Perubahan tersimpan pada data {formData.nama.split(' ')[0]}. Tidak membuat akun baru.
+                  Perubahan tersimpan pada akun peserta yang sama.
                 </p>
               </div>
 
               <div className="pt-2 flex items-center justify-between gap-3">
                 <button
                   type="button"
+                  disabled={submitting}
                   onClick={() => setShowEditModal(false)}
                   className="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition"
                 >
@@ -733,86 +862,19 @@ export const AdminInternsPage = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-[#17362f] hover:bg-[#122b25] text-white text-xs font-semibold rounded-lg shadow-xs transition"
+                  disabled={submitting}
+                  className="px-6 py-2.5 bg-[#17362f] hover:bg-[#122b25] disabled:bg-slate-400 text-white text-xs font-semibold rounded-lg shadow-xs transition flex items-center gap-2"
                 >
-                  Simpan Perubahan
+                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <span>Simpan Perubahan</span>
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-
-      {/* ======================================================== */}
-      {/* MODAL 3: Detail Anak Magang                             */}
-      {/* ======================================================== */}
-      {showDetailModal && selectedIntern && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-2xs animate-fadeIn">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 md:p-7 shadow-2xl relative border border-slate-200">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <div>
-                <span className="text-[10px] font-bold text-[#17362f] uppercase tracking-wider">
-                  Detail Peserta
-                </span>
-                <h3 className="text-lg font-bold text-slate-900 leading-tight">
-                  {selectedIntern.nama}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowDetailModal(false)}
-                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs text-slate-600">
-              <div className="flex justify-between py-1.5 border-b border-slate-50">
-                <span className="text-slate-400">Email Akun:</span>
-                <span className="font-semibold text-slate-800 font-mono">{selectedIntern.email}</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-slate-50">
-                <span className="text-slate-400">Asal Kampus:</span>
-                <span className="font-semibold text-slate-800">{selectedIntern.kampus}</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-slate-50">
-                <span className="text-slate-400">Periode Magang:</span>
-                <span className="font-semibold text-slate-800">{selectedIntern.periodeFormatted}</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-slate-50">
-                <span className="text-slate-400">Status Penempatan:</span>
-                <span className="font-semibold text-slate-800">{selectedIntern.status_kerja}</span>
-              </div>
-              <div className="flex justify-between py-1.5">
-                <span className="text-slate-400">Status Periode:</span>
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                    selectedIntern.status_periode === 'Aktif'
-                      ? 'bg-[#e7f5ec] text-[#206941]'
-                      : 'bg-slate-100 text-slate-500'
-                  }`}
-                >
-                  {selectedIntern.status_periode}
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-slate-100 flex justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowDetailModal(false);
-                  handleOpenEditModal(selectedIntern);
-                }}
-                className="px-4 py-2 bg-[#17362f] text-white text-xs font-semibold rounded-lg hover:bg-[#122b25] transition"
-              >
-                Ubah Data Ini
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
+
+export default AdminInternsPage;

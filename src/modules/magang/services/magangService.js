@@ -1,10 +1,12 @@
-﻿import api from '../../../api/client';
+import api from '../../../api/client';
 
 export const magangService = {
   // Interns
   getInternMe: () => api.get('/magang/interns/me'),
   getAllInterns: (params) => api.get('/magang/interns', { params }),
+  getInternDetail: (id) => api.get(`/magang/interns/${id}`),
   createIntern: (data) => api.post('/magang/interns', data),
+  updateIntern: (id, data) => api.patch(`/magang/interns/${id}`, data),
   updateStatusKerja: (id, status_kerja) =>
     api.patch(`/magang/interns/${id}/status-kerja`, { status_kerja }),
 
@@ -25,7 +27,7 @@ export const magangService = {
   // Logbooks
   getTodayLogbook: () => api.get('/magang/logbooks/today'),
   saveTodayLogbook: (isi) => api.put('/magang/logbooks/today', { isi }),
-  getMyLogbooks: () => api.get('/magang/logbooks/me'),
+  getMyLogbooks: (params) => api.get('/magang/logbooks/me', { params }),
   getAllLogbooks: (params) => api.get('/magang/logbooks', { params }),
 
   // Tasks
@@ -33,5 +35,8 @@ export const magangService = {
   updateTaskProgress: (id, data) => api.patch(`/magang/tasks/${id}/progress`, data),
   getAllTasks: (params) => api.get('/magang/tasks', { params }),
   createTask: (data) => api.post('/magang/tasks', data),
+  updateTask: (id, data) => api.patch(`/magang/tasks/${id}`, data),
   deleteTask: (id) => api.delete(`/magang/tasks/${id}`),
 };
+
+export default magangService;
