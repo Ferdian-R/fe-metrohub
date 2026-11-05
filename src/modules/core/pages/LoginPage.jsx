@@ -1,22 +1,16 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { AlertCircle } from 'lucide-react';
 
 export const LoginPage = () => {
-  const [email, setEmail] = useState('admin@metro.demo');
-  const [password, setPassword] = useState('demo1234');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
-
-  const handleSelectDemo = (demoEmail) => {
-    setEmail(demoEmail);
-    setPassword('demo1234');
-    setError('');
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -70,11 +64,8 @@ export const LoginPage = () => {
         </div>
 
         {/* Footer Sisi Kiri */}
-        <div className="pt-10 flex items-center gap-3 text-xs text-[#71988b]">
-          <span className="px-2.5 py-0.5 rounded border border-[#2b5349] bg-[#1a3e36] text-[10px] font-semibold text-[#8eb8aa]">
-            Demo
-          </span>
-          <span>Data hanya contoh</span>
+        <div className="pt-10 text-xs text-[#71988b]">
+          <span>&copy; {new Date().getFullYear()} Metro Software</span>
         </div>
       </div>
 
@@ -113,7 +104,7 @@ export const LoginPage = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@metro.demo"
+                placeholder="nama@perusahaan.com"
                 className="w-full px-4 py-2.5 rounded-lg border border-slate-300 bg-[#f9fafb] text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#17362f]/20 focus:border-[#17362f] transition"
               />
             </div>
@@ -149,38 +140,6 @@ export const LoginPage = () => {
               {loading ? 'Memproses...' : 'Masuk'}
             </button>
           </form>
-
-          {/* Akun Demo Buttons */}
-          <div className="pt-6 border-t border-slate-100">
-            <p className="text-xs font-bold text-slate-800">Akun demo</p>
-            <p className="text-[11px] text-slate-500 mt-0.5 mb-3">
-              Pilih akun demo. Password: <span className="font-mono text-slate-700">demo1234</span>
-            </p>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleSelectDemo('admin@metro.demo')}
-                className="px-3.5 py-1.5 rounded-lg border border-slate-300 hover:border-slate-500 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition shadow-2xs"
-              >
-                Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectDemo('magang@metro.demo')}
-                className="px-3.5 py-1.5 rounded-lg border border-slate-300 hover:border-slate-500 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition shadow-2xs"
-              >
-                Anak Magang
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectDemo('nonaktif@metro.demo')}
-                className="px-3.5 py-1.5 rounded-lg border border-slate-300 hover:border-slate-500 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition shadow-2xs"
-              >
-                Akun nonaktif
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>

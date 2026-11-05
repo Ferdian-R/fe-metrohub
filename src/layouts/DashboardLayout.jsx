@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -17,11 +17,31 @@ import {
   X,
   LogOut,
   User,
-  ArrowRightLeft,
 } from 'lucide-react';
 
+const ICON_MAP = {
+  '/admin/dashboard': LayoutGrid,
+  '/admin/magang/interns': Users,
+  '/admin/magang/absensi': Clock,
+  '/admin/magang/logbook': BookOpen,
+  '/admin/magang/penugasan': CheckSquare,
+  '/admin/keuangan/transaksi': FileText,
+  '/admin/keuangan/kategori': Tag,
+  '/admin/keuangan/ringkasan': BarChart2,
+  '/admin/pengaturan/pengguna': ShieldCheck,
+  '/admin/pengaturan/lokasi': MapPin,
+  '/magang/dashboard': LayoutGrid,
+  '/dashboard-saya': LayoutGrid,
+  '/magang/absensi': Clock,
+  '/magang/absensi-saya': Clock,
+  '/magang/logbook': BookOpen,
+  '/magang/tugas': CheckSquare,
+  '/magang/profil': User,
+  '/profil': User,
+};
+
 export const DashboardLayout = () => {
-  const { user, login, logout } = useAuth();
+  const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const navigate = useNavigate();
@@ -33,21 +53,9 @@ export const DashboardLayout = () => {
   };
 
   const isInternPortal =
-    location.pathname.startsWith('/magang') ||
-    user?.role === 'Anak Magang';
+    location.pathname.startsWith('/magang') || user?.role === 'Anak Magang';
 
-  const handleSwitchRole = async () => {
-    setUserDropdownOpen(false);
-    if (isInternPortal) {
-      await login('admin@metro.demo', 'demo1234');
-      navigate('/admin/magang/interns');
-    } else {
-      await login('magang@metro.demo', 'demo1234');
-      navigate('/magang/dashboard');
-    }
-  };
-
-  const adminNavGroups = [
+  const defaultAdminNavGroups = [
     {
       items: [
         { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutGrid },
@@ -79,7 +87,7 @@ export const DashboardLayout = () => {
     },
   ];
 
-  const internNavGroups = [
+  const defaultInternNavGroups = [
     {
       items: [
         { name: 'Dashboard Saya', path: '/magang/dashboard', icon: LayoutGrid },
@@ -96,16 +104,29 @@ export const DashboardLayout = () => {
     },
   ];
 
-  const navGroups = isInternPortal ? internNavGroups : adminNavGroups;
+  const navGroups = isInternPortal ? defaultInternNavGroups : defaultAdminNavGroups;
 
-  // Profil data tampilan
-  const displayName = isInternPortal ? (user?.role === 'Anak Magang' ? user.nama : 'Raka Aditya') : (user?.role === 'Admin' ? user.nama : 'Nadia Pratama');
-  const displayRole = isInternPortal ? 'Anak Magang' : 'Admin';
-  const displayInitials = isInternPortal ? 'RA' : 'NP';
+  // Nama & Role dari user sesi login
+  const displayName = user?.nama || (isInternPortal ? 'Peserta Magang' : 'Administrator');
+  const displayRole = user?.role || (isInternPortal ? 'Anak Magang' : 'Admin');
+  const displayEmail = user?.email || '';
+  const displayInitials = displayName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join('') || (isInternPortal ? 'MG' : 'AD');
+
+  // Format tanggal hari ini WIB
+  const todayFormatted = new Intl.DateTimeFormat('id-ID', {
+    dateStyle: 'long',
+    timeZone: 'Asia/Jakarta',
+  }).format(new Date());
+
   const headerContext = isInternPortal ? (
-    <>Masa magang aktif <span className="font-semibold text-slate-700">20 Oktober 2026</span></>
+    <>Masa magang aktif <span className="font-semibold text-slate-700">{todayFormatted}</span></>
   ) : (
-    <>Operasional internal <span className="font-semibold text-slate-700">20 Oktober 2026</span></>
+    <>Operasional internal <span className="font-semibold text-slate-700">{todayFormatted}</span></>
   );
 
   return (
@@ -125,13 +146,13 @@ export const DashboardLayout = () => {
         </button>
       </div>
 
-      {/* Sidebar: Fixed & Height Pas Layar (h-screen, sticky top-0 di desktop) */}
+      {/* Sidebar: Fixed & Height Pas Layar */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-64 h-screen bg-[#17362f] text-[#a4c2b8] flex flex-col justify-between transition-transform duration-200 shrink-0 md:sticky md:top-0 md:translate-x-0 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex flex-col flex-1 overflow-y-auto">
+        <div className={`flex flex-col flex-1 ${isInternPortal ? 'overflow-hidden' : 'overflow-y-auto'}`}>
           {/* Logo Brand Header */}
           <div className="p-5 flex items-center gap-3 shrink-0">
             <img src="/logo.png" alt="Metro Software" className="w-8 h-8 rounded-lg object-contain shadow-xs border border-[#375e53]" />
@@ -150,7 +171,7 @@ export const DashboardLayout = () => {
                   </p>
                 )}
                 {group.items.map((item) => {
-                  const Icon = item.icon;
+                  const Icon = item.icon || LayoutGrid;
                   const isActive = location.pathname.startsWith(item.path);
                   return (
                     <NavLink
@@ -178,7 +199,7 @@ export const DashboardLayout = () => {
           <p className="text-xs font-semibold text-white">
             {isInternPortal ? 'Portal Anak Magang' : 'Ruang kerja Admin'}
           </p>
-          <p className="text-[11px] text-[#71988b]">Demo · data contoh</p>
+          <p className="text-[11px] text-[#71988b]">Sistem Terintegrasi MetroHub</p>
         </div>
       </aside>
 
@@ -192,7 +213,7 @@ export const DashboardLayout = () => {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Header Sticky - Aligned with main container */}
+        {/* Top Header Sticky */}
         <header className="h-14 bg-white/95 backdrop-blur-xs border-b border-[#e2e7e4] px-6 md:px-8 sticky top-0 z-30 shrink-0 flex items-center">
           <div className="w-full max-w-[1600px] mx-auto flex items-center justify-between">
             <div className="text-xs text-slate-500 font-medium">
@@ -201,60 +222,46 @@ export const DashboardLayout = () => {
 
             {/* User Profile Pill */}
             <div className="relative">
-            <button
-              type="button"
-              onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-              className="flex items-center gap-2.5 hover:bg-slate-50 p-1.5 rounded-xl transition select-none cursor-pointer"
-            >
-              <div className="w-8 h-8 rounded-full bg-[#d6e7df] text-[#17362f] font-bold text-xs flex items-center justify-center">
-                {displayInitials}
-              </div>
-              <div className="text-left hidden sm:block">
-                <p className="text-xs font-semibold text-slate-800 leading-tight">
-                  {displayName}
-                </p>
-                <p className="text-[10px] text-slate-400 leading-tight">
-                  {displayRole}
-                </p>
-              </div>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-            </button>
-
-            {userDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-100 py-1 z-50">
-                <div className="px-4 py-2 border-b border-slate-100">
-                  <p className="text-xs font-semibold text-slate-800">{displayName}</p>
-                  <p className="text-[11px] text-slate-400">
-                    {isInternPortal ? 'raka@metro.demo' : 'admin@metro.demo'}
+              <button
+                type="button"
+                onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                className="flex items-center gap-2.5 hover:bg-slate-50 p-1.5 rounded-xl transition select-none cursor-pointer"
+              >
+                <div className="w-8 h-8 rounded-full bg-[#d6e7df] text-[#17362f] font-bold text-xs flex items-center justify-center">
+                  {displayInitials}
+                </div>
+                <div className="text-left hidden sm:block">
+                  <p className="text-xs font-semibold text-slate-800 leading-tight">
+                    {displayName}
+                  </p>
+                  <p className="text-[10px] text-slate-400 leading-tight">
+                    {displayRole}
                   </p>
                 </div>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              </button>
 
-                {/* Tombol Cepat Pindah Portal (Demo Friendly) */}
-                <button
-                  type="button"
-                  onClick={handleSwitchRole}
-                  className="w-full text-left px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-b border-slate-50 cursor-pointer"
-                >
-                  <ArrowRightLeft className="w-3.5 h-3.5 text-slate-400" />
-                  <span>
-                    {isInternPortal ? 'Beralih ke Portal Admin' : 'Beralih ke Portal Anak Magang'}
-                  </span>
-                </button>
+              {userDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-100 py-1 z-50">
+                  <div className="px-4 py-2 border-b border-slate-100">
+                    <p className="text-xs font-semibold text-slate-800">{displayName}</p>
+                    <p className="text-[11px] text-slate-400">{displayEmail}</p>
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="w-full text-left px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer"
-                >
-                  <LogOut className="w-3.5 h-3.5" /> Keluar
-                </button>
-              </div>
-            )}
-          </div>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5" /> Keluar
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
-        {/* Page View Container - Lebar & Di Tengah Konsisten */}
+        {/* Page View Container */}
         <main className="flex-1 px-6 md:px-8 py-6 md:py-8 w-full">
           <div className="w-full max-w-[1600px] mx-auto">
             <Outlet />

@@ -293,14 +293,13 @@ export const FinanceSummaryPage = () => {
   }, [appliedPeriod]);
 
   return (
-    <main className="min-h-full bg-slate-50 p-4 sm:p-6 lg:p-8">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">Ringkasan Keuangan</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Laporan pemasukan, pengeluaran, dan saldo kumulatif per periode
-          </p>
-        </header>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 font-lexend">Ringkasan Keuangan</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Laporan pemasukan, pengeluaran, dan saldo kumulatif per periode
+        </p>
+      </div>
 
         <form
           onSubmit={handleApplyPeriod}
@@ -473,13 +472,12 @@ export const FinanceSummaryPage = () => {
           </>
         )}
 
-        <aside className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <aside className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <p>
-            <span className="font-semibold">Catatan:</span> Data contoh, bukan saldo bank. Saldo
+            <span className="font-semibold">Catatan:</span> Bukan saldo bank. Saldo
             kumulatif mencakup transaksi sebelum periode.
           </p>
         </aside>
-      </div>
-    </main>
+    </div>
   );
 };

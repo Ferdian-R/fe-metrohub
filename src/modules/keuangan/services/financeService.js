@@ -1,104 +1,78 @@
 import api from '../../../api/client';
 
 /**
- * Layanan komunikasi API untuk modul Keuangan.
+ * Layanan komunikasi REST API backend untuk modul Keuangan MetroHub
+ * Mengikuti spesifikasi PANDUAN-API.md:
+ * - Kategori: GET /keuangan/categories?jenis=&aktif=
+ * - Transaksi: GET /keuangan/transactions?bulan=YYYY-MM
+ * - Catat Transaksi: POST /keuangan/transactions
+ * - Ubah Transaksi: PATCH /keuangan/transactions/:id
+ * - Hapus Transaksi: DELETE /keuangan/transactions/:id
+ * - Ringkasan: GET /keuangan/summary?bulan=YYYY-MM
  */
 export const financeService = {
-  /**
-   * Mengambil daftar kategori keuangan.
-   * @param {object} [params] - Parameter filter atau pagination.
-   * @returns {Promise<object>} Respons API.
-   */
+  // Kategori Keuangan
   getCategories: (params) => api.get('/keuangan/categories', { params }),
-
-  /**
-   * Membuat kategori keuangan baru.
-   * @param {object} data - Data kategori.
-   * @returns {Promise<object>} Respons API.
-   */
   createCategory: (data) => api.post('/keuangan/categories', data),
-
-  /**
-   * Memperbarui kategori keuangan.
-   * @param {string | number} id - ID kategori.
-   * @param {object} data - Data kategori yang diperbarui.
-   * @returns {Promise<object>} Respons API.
-   */
-  updateCategory: (id, data) => api.put(`/keuangan/categories/${id}`, data),
-
-  /**
-   * Mengubah status aktif kategori keuangan.
-   * @param {string | number} id - ID kategori.
-   * @returns {Promise<object>} Respons API.
-   */
-  toggleCategoryStatus: (id) => api.patch(`/keuangan/categories/${id}/toggle`),
-
-  /**
-   * Menghapus kategori yang belum digunakan.
-   * @param {string | number} id - ID kategori.
-   * @returns {Promise<object>} Respons API.
-   */
+  updateCategory: (id, data) => api.patch(`/keuangan/categories/${id}`, data),
   deleteCategory: (id) => api.delete(`/keuangan/categories/${id}`),
 
-  /**
-   * Mengambil daftar transaksi dengan filter periode atau pencarian.
-   * @param {object} [params] - Parameter filter atau pagination.
-   * @returns {Promise<object>} Respons API.
-   */
-  getTransactions: (params) => api.get('/keuangan/transactions', { params }),
-
-  /**
-   * Membuat transaksi keuangan baru.
-   * @param {object} data - Data transaksi.
-   * @returns {Promise<object>} Respons API.
-   */
-  createTransaction: (data) => api.post('/keuangan/transactions', data),
-
-  /**
-   * Memperbarui transaksi keuangan.
-   * @param {string | number} id - ID transaksi.
-   * @param {object} data - Data transaksi yang diperbarui.
-   * @returns {Promise<object>} Respons API.
-   */
-  updateTransaction: (id, data) => api.put(`/keuangan/transactions/${id}`, data),
-
-  /**
-   * Menghapus transaksi secara soft-delete.
-   * @param {string | number} id - ID transaksi.
-   * @returns {Promise<object>} Respons API.
-   */
+  // Transaksi Keuangan
+  getTransactions: (params) => {
+    // Sesuai PANDUAN-API.md query parameter menggunakan `bulan`
+    const query = { ...params };
+    if (query.periode && !query.bulan) {
+      query.bulan = query.periode;
+      delete query.periode;
+    }
+    return api.get('/keuangan/transactions', { params: query });
+  },
+  createTransaction: (data) => {
+    // Konversi enum & tipe data sesuai PANDUAN-API.md
+    return api.post('/keuangan/transactions', {
+      tanggal: data.tanggal,
+      jenis: String(data.jenis).toUpperCase(), // 'PEMASUKAN' | 'PENGELUARAN'
+      category_id: Number(data.category_id),
+      nominal: Number(data.nominal),
+      keterangan: data.keterangan || undefined,
+    });
+  },
+  updateTransaction: (id, data) => {
+    const payload = {};
+    if (data.tanggal) payload.tanggal = data.tanggal;
+    if (data.jenis) payload.jenis = String(data.jenis).toUpperCase();
+    if (data.category_id !== undefined) payload.category_id = Number(data.category_id);
+    if (data.nominal !== undefined) payload.nominal = Number(data.nominal);
+    if (data.keterangan !== undefined) payload.keterangan = data.keterangan;
+    return api.patch(`/keuangan/transactions/${id}`, payload);
+  },
   softDeleteTransaction: (id) => api.delete(`/keuangan/transactions/${id}`),
 
-  /**
-   * Mengambil ringkasan bulanan dan rincian transaksi per kategori.
-   * @param {object} [params] - Parameter bulan atau periode.
-   * @returns {Promise<object>} Respons API.
-   */
-  getMonthlySummary: (params) => api.get('/keuangan/summary', { params }),
+  // Ringkasan Keuangan Bulanan
+  getMonthlySummary: (params) => {
+    const query = { ...params };
+    if (query.periode && !query.bulan) {
+      query.bulan = query.periode;
+      delete query.periode;
+    }
+    return api.get('/keuangan/summary', { params: query });
+  },
 };
 
 /**
- * Mengubah angka menjadi format mata uang Rupiah Indonesia.
- * @param {number | string} number - Nilai nominal.
- * @returns {string} Nilai dalam format, misalnya "Rp 1.500.000".
+ * Format string Rupiah tanpa spasi setelah Rp (contoh: Rp5.000.000)
  */
 export const formatRupiah = (number) => {
-  if (number === null || number === undefined || number === '') return 'Rp 0';
+  if (number === null || number === undefined || number === '') return 'Rp0';
 
   const numericValue = Number(number);
-  if (!Number.isFinite(numericValue)) return 'Rp 0';
+  if (!Number.isFinite(numericValue)) return 'Rp0';
 
   const roundedValue = Math.round(numericValue);
   const formattedValue = new Intl.NumberFormat('id-ID').format(Math.abs(roundedValue));
-  return roundedValue < 0 ? `-Rp ${formattedValue}` : `Rp ${formattedValue}`;
+  return roundedValue < 0 ? `-Rp${formattedValue}` : `Rp${formattedValue}`;
 };
 
-/**
- * Membersihkan string Rupiah menjadi angka integer.
- * Titik dianggap sebagai pemisah ribuan, sedangkan pecahan setelah koma diabaikan.
- * @param {string | number} value - Nilai Rupiah atau angka.
- * @returns {number} Nilai integer numerik.
- */
 export const parseRupiah = (value) => {
   if (typeof value === 'number') {
     return Number.isFinite(value) ? Math.round(value) : 0;

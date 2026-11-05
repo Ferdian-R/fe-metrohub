@@ -490,24 +490,23 @@ export const CategoriesPage = () => {
   };
 
   return (
-    <main className="min-h-full bg-slate-50 p-4 sm:p-6 lg:p-8">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Kategori</h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Kategori pemasukan dan pengeluaran untuk transaksi baru
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={openCreateModal}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-800 px-4 py-2 font-medium text-white shadow-sm hover:bg-emerald-900"
-          >
-            <Plus className="h-4 w-4" />
-            Tambah Kategori
-          </button>
-        </header>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900 font-lexend">Kategori</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Kategori pemasukan dan pengeluaran untuk transaksi baru
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={openCreateModal}
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#17362f] px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-[#112a24] transition-colors"
+        >
+          <Plus className="h-4 w-4" />
+          Tambah Kategori
+        </button>
+      </div>
 
         {toast && (
           <div
@@ -664,7 +663,6 @@ export const CategoriesPage = () => {
             Menampilkan {loading ? 0 : filteredCategories.length} dari {categories.length} kategori
           </div>
         </section>
-      </div>
 
       {(modalMode === 'create' || modalMode === 'edit') && (
         <CategoryModal
@@ -688,6 +686,6 @@ export const CategoriesPage = () => {
           onDelete={() => handleProtectionAction('delete')}
         />
       )}
-    </main>
+    </div>
   );
 };
