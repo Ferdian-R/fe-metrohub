@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, ChevronDown, LoaderCircle, Plus, X } from 'lucide-react';
-import { financeService, formatRupiah } from '../services/financeService';
+import {
+  financeService,
+  formatRupiah,
+  getCurrentPeriodWIB,
+  getRecentPeriods,
+} from '../services/financeService';
 import TransactionModals from '../components/TransactionModals';
 
-const INITIAL_PERIOD = '2026-10';
+// Pilihan periode: 24 bulan terakhir dari bulan berjalan (WIB)
+const PERIOD_OPTIONS = getRecentPeriods(24);
+
 
 const getErrorMessage = (error) =>
   error?.message || error?.error || 'Terjadi kesalahan. Silakan coba kembali.';
@@ -112,7 +119,7 @@ const formatDate = (dateValue) => {
 const getTransactionDate = (transaction) => transaction.tanggal?.slice(0, 10) || '';
 
 export const TransactionsPage = () => {
-  const [period, setPeriod] = useState(INITIAL_PERIOD);
+  const [period, setPeriod] = useState(getCurrentPeriodWIB); // default: bulan berjalan (WIB)
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
   const [priorBalance, setPriorBalance] = useState(null);
@@ -352,9 +359,11 @@ export const TransactionsPage = () => {
                 onChange={(e) => setPeriod(e.target.value)}
                 className="appearance-none rounded-lg border border-slate-300 bg-white px-3.5 py-1.5 pr-8 text-xs font-medium text-slate-800 shadow-2xs outline-none hover:border-slate-400 focus:border-[#17362f]"
               >
-                <option value="2026-10">Oktober 2026</option>
-                <option value="2026-09">September 2026</option>
-                <option value="2026-11">November 2026</option>
+                {PERIOD_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
               <ChevronDown className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
             </div>

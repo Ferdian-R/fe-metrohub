@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, LoaderCircle, Trash2, X, ArrowUpRight, ArrowDownLeft, Info, AlertTriangle } from 'lucide-react';
-import { formatRupiah } from '../services/financeService';
+import { Check, LoaderCircle, Trash2, X, ArrowUpRight, ArrowDownLeft, Info } from 'lucide-react';
+import { formatRupiah, getTodayWIB } from '../services/financeService';
 
 const EMPTY_FORM = {
-  tanggal: '2026-10-20',
+  tanggal: '',
   jenis: 'pemasukan',
   category_id: '',
   nominal: '',
@@ -50,7 +50,7 @@ const TransactionModals = ({
 
     if (mode === 'edit' && data) {
       setForm({
-        tanggal: String(data?.tanggal ?? data?.date ?? '2026-10-20').slice(0, 10),
+        tanggal: String(data?.tanggal ?? data?.date ?? getTodayWIB()).slice(0, 10),
         jenis: String(data?.jenis ?? data?.type ?? 'pengeluaran').toLocaleLowerCase('id-ID'),
         category_id: String(
           data?.category_id ?? data?.kategori_id ?? data?.category?.id ?? data?.kategori?.id ?? ''
@@ -59,9 +59,9 @@ const TransactionModals = ({
         keterangan: data?.keterangan ?? data?.description ?? '',
       });
     } else {
-      // Default initial date 20 Oktober 2026 as in Figma
+      // Transaksi baru: tanggal default hari ini (WIB)
       setForm({
-        tanggal: '2026-10-20',
+        tanggal: getTodayWIB(),
         jenis: 'pemasukan',
         category_id: '',
         nominal: '',

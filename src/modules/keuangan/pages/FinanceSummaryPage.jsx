@@ -7,7 +7,7 @@ import {
   LoaderCircle,
   Wallet,
 } from 'lucide-react';
-import { financeService, formatRupiah } from '../services/financeService';
+import { financeService, formatRupiah, getCurrentPeriodWIB } from '../services/financeService';
 
 const MONTHS = [
   { value: '01', label: 'Januari' },
@@ -24,7 +24,11 @@ const MONTHS = [
   { value: '12', label: 'Desember' },
 ];
 
-const YEARS = ['2025', '2026', '2027'];
+// Tahun 2025 sampai tahun depan, mengikuti tahun berjalan
+const YEARS = Array.from(
+  { length: Number(getCurrentPeriodWIB().slice(0, 4)) + 1 - 2025 + 1 },
+  (_, i) => String(2025 + i)
+);
 
 const getErrorMessage = (error) =>
   error?.message || error?.error || 'Terjadi kesalahan. Silakan coba kembali.';
@@ -200,9 +204,11 @@ const BreakdownCard = ({ title, items, color, emptyMessage }) => (
 );
 
 export const FinanceSummaryPage = () => {
-  const [selectedMonth, setSelectedMonth] = useState('10');
-  const [selectedYear, setSelectedYear] = useState('2026');
-  const [appliedPeriod, setAppliedPeriod] = useState('2026-10');
+  // Default: bulan berjalan (WIB)
+  const [initialPeriod] = useState(getCurrentPeriodWIB);
+  const [selectedMonth, setSelectedMonth] = useState(() => initialPeriod.slice(5, 7));
+  const [selectedYear, setSelectedYear] = useState(() => initialPeriod.slice(0, 4));
+  const [appliedPeriod, setAppliedPeriod] = useState(initialPeriod);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

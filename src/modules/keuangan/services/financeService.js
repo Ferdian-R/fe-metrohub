@@ -60,6 +60,38 @@ export const financeService = {
 };
 
 /**
+ * Bulan berjalan dalam WIB dengan format 'YYYY-MM' (sama dengan default backend).
+ */
+export const getTodayWIB = () =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+
+export const getCurrentPeriodWIB = () => getTodayWIB().slice(0, 7);
+
+const NAMA_BULAN = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+];
+
+/**
+ * Daftar periode 'YYYY-MM' dari bulan berjalan mundur sebanyak `count` bulan.
+ * Contoh label: "November 2026".
+ */
+export const getRecentPeriods = (count = 24) => {
+  const [year, month] = getCurrentPeriodWIB().split('-').map(Number);
+  return Array.from({ length: count }, (_, i) => {
+    const total = year * 12 + (month - 1) - i;
+    const y = Math.floor(total / 12);
+    const m = (total % 12) + 1;
+    return { value: `${y}-${String(m).padStart(2, '0')}`, label: `${NAMA_BULAN[m - 1]} ${y}` };
+  });
+};
+
+/**
  * Format string Rupiah tanpa spasi setelah Rp (contoh: Rp5.000.000)
  */
 export const formatRupiah = (number) => {
