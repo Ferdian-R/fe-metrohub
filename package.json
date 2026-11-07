@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:be": "vite build --outDir ../be-metrohub/public --emptyOutDir && node -e \"require('fs').writeFileSync('../be-metrohub/public/.gitkeep','')\"",
     "lint": "oxlint",
     "preview": "vite preview"
   },

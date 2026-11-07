@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { coreService } from '../modules/core/services/coreService';
 import {
   LayoutGrid,
   Users,
@@ -38,22 +39,67 @@ const ICON_MAP = {
   '/magang/tugas': CheckSquare,
   '/magang/profil': User,
   '/profil': User,
+  '/admin/profil': User,
+};
+
+// Path menu dari backend (GET /menu) → route frontend
+const BACKEND_PATH_MAP = {
+  '/dashboard': '/admin/dashboard',
+  '/dashboard-saya': '/magang/dashboard',
+  '/magang/absensi-saya': '/magang/absensi',
+  '/magang/logbook-saya': '/magang/logbook',
+  '/magang/tugas-saya': '/magang/tugas',
+  '/magang/anak-magang': '/admin/magang/interns',
+  '/magang/absensi': '/admin/magang/absensi',
+  '/magang/logbook': '/admin/magang/logbook',
+  '/magang/penugasan': '/admin/magang/penugasan',
+  '/keuangan/transaksi': '/admin/keuangan/transaksi',
+  '/keuangan/kategori': '/admin/keuangan/kategori',
+  '/keuangan/ringkasan': '/admin/keuangan/ringkasan',
+  '/pengaturan/pengguna': '/admin/pengaturan/pengguna',
+  '/pengaturan/lokasi': '/admin/pengaturan/lokasi',
 };
 
 export const DashboardLayout = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [serverMenu, setServerMenu] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // CR-03: sidebar dari menu yang sudah disaring permission di backend
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    coreService
+      .getMenu()
+      .then((res) => !cancelled && setServerMenu(res?.data || null))
+      .catch(() => !cancelled && setServerMenu(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const isInternUser = hasPermission('magang:absen') && !hasPermission('magang:kelola');
+  const profilePath = isInternUser ? '/magang/profil' : '/admin/profil';
+
+  const mapMenuPath = (p) => (p === '/profil' ? profilePath : BACKEND_PATH_MAP[p] || p);
+
+  const serverNavGroups = serverMenu?.map((g) => ({
+    header: g.group === 'Dashboard' ? null : g.group.toUpperCase(),
+    items: g.items.map((it) => {
+      const path = mapMenuPath(it.path);
+      return { name: it.label, path, icon: ICON_MAP[path] || LayoutGrid };
+    }),
+  }));
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
-  const isInternPortal =
-    location.pathname.startsWith('/magang') || user?.role === 'Anak Magang';
+  const isInternPortal = location.pathname.startsWith('/magang') || isInternUser;
 
   const defaultAdminNavGroups = [
     {
@@ -83,6 +129,7 @@ export const DashboardLayout = () => {
       items: [
         { name: 'Pengguna dan Role', path: '/admin/pengaturan/pengguna', icon: ShieldCheck },
         { name: 'Lokasi Kantor', path: '/admin/pengaturan/lokasi', icon: MapPin },
+        { name: 'Profil', path: '/admin/profil', icon: User },
       ],
     },
   ];
@@ -104,7 +151,12 @@ export const DashboardLayout = () => {
     },
   ];
 
-  const navGroups = isInternPortal ? defaultInternNavGroups : defaultAdminNavGroups;
+  // Menu statis hanya cadangan bila GET /menu gagal
+  const navGroups = serverNavGroups?.length
+    ? serverNavGroups
+    : isInternPortal
+      ? defaultInternNavGroups
+      : defaultAdminNavGroups;
 
   // Nama & Role dari user sesi login
   const displayName = user?.nama || (isInternPortal ? 'Peserta Magang' : 'Administrator');
@@ -248,6 +300,16 @@ export const DashboardLayout = () => {
                     <p className="text-[11px] text-slate-400">{displayEmail}</p>
                   </div>
 
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserDropdownOpen(false);
+                      navigate(profilePath);
+                    }}
+                    className="w-full text-left px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                  >
+                    <User className="w-3.5 h-3.5" /> Profil
+                  </button>
                   <button
                     type="button"
                     onClick={handleLogout}

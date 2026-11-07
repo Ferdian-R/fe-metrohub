@@ -1,16 +1,38 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ChevronDown,
   X,
   Loader2,
   AlertCircle,
-  MapPin,
-  Calendar,
-  Camera,
+  PencilLine,
 } from 'lucide-react';
 import { magangService } from '../services/magangService';
+import { useToast } from '../../../context/ToastContext';
+
+// Rekap BE mengirim nama di `nama_anak_magang` (MG-09)
+const getInternName = (item) =>
+  item?.nama_anak_magang || item?.intern?.user?.nama || `Peserta #${item?.intern_id}`;
+
+// ISO datetime → "HH:mm" dalam WIB untuk <input type="time">
+const toTimeInputWIB = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('en-GB', {
+    timeZone: 'Asia/Jakarta',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+};
+
+// Tanggal absensi (YYYY-MM-DD) + jam WIB → ISO dengan offset +07:00
+const toIsoWIB = (tanggal, time) => `${tanggal}T${time}:00+07:00`;
+
+const EMPTY_KOREKSI = { jam_checkin: '', jam_checkout: '', keterangan: '' };
 
 export const AdminAttendancePage = () => {
+  const { showToast } = useToast();
   const [attendances, setAttendances] = useState([]);
   const [interns, setInterns] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,6 +42,12 @@ export const AdminAttendancePage = () => {
   const [dariTanggal, setDariTanggal] = useState('');
   const [sampaiTanggal, setSampaiTanggal] = useState('');
   const [activeModalItem, setActiveModalItem] = useState(null);
+
+  // MG-10: koreksi absensi
+  const [koreksiItem, setKoreksiItem] = useState(null);
+  const [koreksiForm, setKoreksiForm] = useState(EMPTY_KOREKSI);
+  const [koreksiError, setKoreksiError] = useState(null);
+  const [koreksiSubmitting, setKoreksiSubmitting] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -58,6 +86,72 @@ export const AdminAttendancePage = () => {
     setSelectedPesertaId('all');
     setDariTanggal('');
     setSampaiTanggal('');
+  };
+
+  const openKoreksi = (item) => {
+    setActiveModalItem(null);
+    setKoreksiItem(item);
+    setKoreksiError(null);
+    setKoreksiForm({
+      jam_checkin: toTimeInputWIB(item.jam_checkin),
+      jam_checkout: toTimeInputWIB(item.jam_checkout),
+      keterangan: '',
+    });
+  };
+
+  const closeKoreksi = () => {
+    if (koreksiSubmitting) return;
+    setKoreksiItem(null);
+    setKoreksiForm(EMPTY_KOREKSI);
+    setKoreksiError(null);
+  };
+
+  const handleSubmitKoreksi = async (e) => {
+    e.preventDefault();
+    const item = koreksiItem;
+    const keterangan = koreksiForm.keterangan.trim();
+
+    if (!koreksiForm.jam_checkin) {
+      setKoreksiError('Jam check-in wajib diisi.');
+      return;
+    }
+    if (koreksiForm.jam_checkout && koreksiForm.jam_checkout < koreksiForm.jam_checkin) {
+      setKoreksiError('Jam check-out tidak boleh sebelum jam check-in.');
+      return;
+    }
+    if (!keterangan) {
+      setKoreksiError('Keterangan koreksi wajib diisi.');
+      return;
+    }
+
+    // Kirim hanya jam yang berubah agar detik pada data asli tidak ikut terhapus
+    const payload = { keterangan_koreksi: keterangan };
+    if (koreksiForm.jam_checkin !== toTimeInputWIB(item.jam_checkin)) {
+      payload.jam_checkin = toIsoWIB(item.tanggal, koreksiForm.jam_checkin);
+    }
+    const checkoutAsli = toTimeInputWIB(item.jam_checkout);
+    if (koreksiForm.jam_checkout !== checkoutAsli) {
+      payload.jam_checkout = koreksiForm.jam_checkout
+        ? toIsoWIB(item.tanggal, koreksiForm.jam_checkout)
+        : null;
+    }
+
+    try {
+      setKoreksiSubmitting(true);
+      setKoreksiError(null);
+      await magangService.correctAttendance(item.id, payload);
+      showToast({
+        title: 'Absensi berhasil dikoreksi',
+        message: `Data ${getInternName(item)} tanggal ${formatDateToID(item.tanggal)} telah diperbarui.`,
+      });
+      setKoreksiItem(null);
+      setKoreksiForm(EMPTY_KOREKSI);
+      await fetchData();
+    } catch (err) {
+      setKoreksiError(err?.details?.[0]?.message || err?.message || 'Gagal menyimpan koreksi absensi');
+    } finally {
+      setKoreksiSubmitting(false);
+    }
   };
 
   const formatDateToID = (dateStr) => {
@@ -236,7 +330,7 @@ export const AdminAttendancePage = () => {
                 </tr>
               ) : (
                 attendances.map((item) => {
-                  const internName = item.intern?.user?.nama || `Peserta #${item.intern_id}`;
+                  const internName = getInternName(item);
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/80 transition">
@@ -255,16 +349,35 @@ export const AdminAttendancePage = () => {
                         )}
                       </td>
                       <td className="px-5 py-4 whitespace-nowrap">
-                        {getKelengkapanBadge(item)}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {getKelengkapanBadge(item)}
+                          {item.keterangan_koreksi && (
+                            <span
+                              title={`Dikoreksi oleh ${item.nama_admin_koreksi || 'admin'}: ${item.keterangan_koreksi}`}
+                              className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200"
+                            >
+                              Dikoreksi
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-5 py-4 text-right whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => setActiveModalItem(item)}
-                          className="text-xs text-[#17362f] hover:underline font-semibold"
-                        >
-                          Lihat Bukti
-                        </button>
+                        <div className="inline-flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setActiveModalItem(item)}
+                            className="text-xs text-[#17362f] hover:underline font-semibold"
+                          >
+                            Lihat Bukti
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openKoreksi(item)}
+                            className="text-xs text-slate-600 hover:text-[#17362f] hover:underline font-semibold"
+                          >
+                            Koreksi
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -290,7 +403,7 @@ export const AdminAttendancePage = () => {
                   Bukti Kehadiran
                 </span>
                 <h3 className="text-lg font-bold text-slate-900 leading-tight">
-                  {activeModalItem.intern?.user?.nama || `Peserta #${activeModalItem.intern_id}`} — {formatDateToID(activeModalItem.tanggal)}
+                  {getInternName(activeModalItem)} — {formatDateToID(activeModalItem.tanggal)}
                 </h3>
               </div>
               <button
@@ -375,7 +488,7 @@ export const AdminAttendancePage = () => {
                   </p>
                 )}
 
-                {activeModalItem.jam_checkout && (
+                {activeModalItem.jam_checkout && activeModalItem.lat_checkout != null && (
                   <div className="text-[11px] text-slate-500 flex items-center justify-between">
                     <span>Koordinat:</span>
                     <span className="font-mono text-slate-700">
@@ -384,9 +497,35 @@ export const AdminAttendancePage = () => {
                   </div>
                 )}
               </div>
+
+              {/* MG-10: riwayat koreksi */}
+              {activeModalItem.keterangan_koreksi && (
+                <div className="p-4 rounded-xl bg-sky-50 border border-sky-200 space-y-1.5">
+                  <h4 className="font-bold text-xs uppercase tracking-wide text-sky-800">
+                    Koreksi Admin
+                  </h4>
+                  <p className="text-xs text-slate-700 whitespace-pre-line">
+                    {activeModalItem.keterangan_koreksi}
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    Dikoreksi oleh{' '}
+                    <span className="font-semibold text-slate-700">
+                      {activeModalItem.nama_admin_koreksi || 'admin'}
+                    </span>
+                  </p>
+                </div>
+              )}
             </div>
 
-            <div className="mt-6 pt-4 border-t border-slate-100 flex justify-end">
+            <div className="mt-6 pt-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => openKoreksi(activeModalItem)}
+                className="px-4 py-2 bg-white border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition flex items-center justify-center gap-1.5"
+              >
+                <PencilLine className="w-3.5 h-3.5" />
+                Koreksi Absensi
+              </button>
               <button
                 type="button"
                 onClick={() => setActiveModalItem(null)}
@@ -396,6 +535,117 @@ export const AdminAttendancePage = () => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* MODAL KOREKSI ABSENSI (MG-10) */}
+      {koreksiItem && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-2xs animate-fadeIn">
+          <form
+            onSubmit={handleSubmitKoreksi}
+            className="bg-white rounded-xl max-w-md w-full p-6 md:p-7 shadow-2xl relative border border-slate-200 max-h-[90vh] overflow-y-auto space-y-5"
+          >
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+              <div>
+                <span className="text-[10px] font-bold text-[#17362f] uppercase tracking-wider">
+                  Koreksi Absensi
+                </span>
+                <h3 className="text-lg font-bold text-slate-900 leading-tight">
+                  {getInternName(koreksiItem)} — {formatDateToID(koreksiItem.tanggal)}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={closeKoreksi}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg"
+                aria-label="Tutup"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {koreksiItem.keterangan_koreksi && (
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600">
+                <span className="font-semibold text-slate-700">Koreksi sebelumnya</span>
+                {koreksiItem.nama_admin_koreksi ? ` oleh ${koreksiItem.nama_admin_koreksi}` : ''}:{' '}
+                {koreksiItem.keterangan_koreksi}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Jam check-in (WIB)
+                </label>
+                <input
+                  type="time"
+                  required
+                  value={koreksiForm.jam_checkin}
+                  onChange={(e) => setKoreksiForm((f) => ({ ...f, jam_checkin: e.target.value }))}
+                  className="w-full h-10 px-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f] transition"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Jam check-out (WIB)
+                </label>
+                <input
+                  type="time"
+                  value={koreksiForm.jam_checkout}
+                  onChange={(e) => setKoreksiForm((f) => ({ ...f, jam_checkout: e.target.value }))}
+                  className="w-full h-10 px-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f] transition"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {koreksiItem.jam_checkout
+                    ? 'Kosongkan untuk menghapus jam check-out.'
+                    : 'Isi bila peserta tidak sempat check-out.'}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Keterangan koreksi <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                rows={3}
+                required
+                value={koreksiForm.keterangan}
+                onChange={(e) => setKoreksiForm((f) => ({ ...f, keterangan: e.target.value }))}
+                placeholder="Contoh: Sistem tidak bisa diakses pukul 08.00–09.00, peserta hadir sesuai konfirmasi pembimbing."
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-[#17362f] focus:ring-1 focus:ring-[#17362f] transition resize-y"
+              />
+              <p className="text-[11px] text-slate-400 mt-1">
+                Keterangan dan nama Anda akan tersimpan sebagai riwayat koreksi.
+              </p>
+            </div>
+
+            {koreksiError && (
+              <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+                <span>{koreksiError}</span>
+              </div>
+            )}
+
+            <div className="pt-2 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeKoreksi}
+                disabled={koreksiSubmitting}
+                className="px-4 py-2 bg-white border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={koreksiSubmitting || !koreksiForm.keterangan.trim()}
+                className="px-4 py-2 bg-[#17362f] text-white text-xs font-semibold rounded-lg hover:bg-[#122b25] disabled:bg-slate-300 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
+              >
+                {koreksiSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                Simpan Koreksi
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
@@ -19,6 +19,9 @@ import { AdminLocationPage } from './modules/pengaturan/pages/AdminLocationPage'
 import { CategoriesPage } from './modules/keuangan/pages/CategoriesPage';
 import { TransactionsPage } from './modules/keuangan/pages/TransactionsPage';
 import { FinanceSummaryPage } from './modules/keuangan/pages/FinanceSummaryPage';
+import { AdminDashboardPage } from './modules/core/pages/AdminDashboardPage';
+import { AccountProfilePage } from './modules/core/pages/AccountProfilePage';
+import { ShieldAlert } from 'lucide-react';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -38,14 +41,33 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-// Pengarah cerdas berdasarkan role user
+// Pengarah berdasarkan permission (bukan nama role), sesuai CR-03
 const RoleBasedRedirect = () => {
-  const { user } = useAuth();
-  if (user?.role === 'Anak Magang') {
+  const { hasPermission } = useAuth();
+  if (hasPermission('magang:absen') && !hasPermission('magang:kelola')) {
     return <Navigate to="/magang/dashboard" replace />;
   }
-  return <Navigate to="/admin/magang/interns" replace />;
+  if (hasPermission('core:dashboard')) return <Navigate to="/admin/dashboard" replace />;
+  if (hasPermission('magang:kelola')) return <Navigate to="/admin/magang/interns" replace />;
+  if (hasPermission('keuangan:kelola')) return <Navigate to="/admin/keuangan/transaksi" replace />;
+  if (hasPermission('keuangan:lihat')) return <Navigate to="/admin/keuangan/ringkasan" replace />;
+  return <Navigate to="/admin/profil" replace />;
 };
+
+// Halaman tanpa izin ditolak di frontend juga (backend tetap memeriksa dan membalas 403)
+const RequirePermission = ({ permission, children }) => {
+  const { hasPermission } = useAuth();
+  if (hasPermission(permission)) return children;
+  return (
+    <div className="py-24 text-center text-slate-500">
+      <ShieldAlert className="w-10 h-10 mx-auto text-slate-300 mb-3" />
+      <p className="text-base font-semibold text-slate-800">Akses ditolak</p>
+      <p className="text-xs mt-1">Role Anda tidak memiliki izin untuk membuka halaman ini.</p>
+    </div>
+  );
+};
+
+const guard = (permission, element) => <RequirePermission permission={permission}>{element}</RequirePermission>;
 
 export default function App() {
   return (
@@ -66,24 +88,25 @@ export default function App() {
               <Route index element={<RoleBasedRedirect />} />
 
               {/* Portal Admin Routes */}
-              <Route path="admin/dashboard" element={<Navigate to="/admin/magang/interns" replace />} />
-              <Route path="admin/magang/interns" element={<AdminInternsPage />} />
-              <Route path="admin/magang/interns/:id" element={<AdminInternDetailPage />} />
-              <Route path="admin/magang/absensi" element={<AdminAttendancePage />} />
-              <Route path="admin/magang/logbook" element={<AdminLogbookPage />} />
-              <Route path="admin/magang/penugasan" element={<AdminTasksPage />} />
-              <Route path="admin/pengaturan/pengguna" element={<AdminUsersPage />} />
-              <Route path="admin/pengaturan/lokasi" element={<AdminLocationPage />} />
-              <Route path="admin/keuangan/transaksi" element={<TransactionsPage />} />
-              <Route path="admin/keuangan/kategori" element={<CategoriesPage />} />
-              <Route path="admin/keuangan/ringkasan" element={<FinanceSummaryPage />} />
+              <Route path="admin/dashboard" element={guard('core:dashboard', <AdminDashboardPage />)} />
+              <Route path="admin/magang/interns" element={guard('magang:kelola', <AdminInternsPage />)} />
+              <Route path="admin/magang/interns/:id" element={guard('magang:kelola', <AdminInternDetailPage />)} />
+              <Route path="admin/magang/absensi" element={guard('magang:kelola', <AdminAttendancePage />)} />
+              <Route path="admin/magang/logbook" element={guard('magang:kelola', <AdminLogbookPage />)} />
+              <Route path="admin/magang/penugasan" element={guard('magang:kelola', <AdminTasksPage />)} />
+              <Route path="admin/pengaturan/pengguna" element={guard('core:pengguna', <AdminUsersPage />)} />
+              <Route path="admin/pengaturan/lokasi" element={guard('core:lokasi', <AdminLocationPage />)} />
+              <Route path="admin/keuangan/transaksi" element={guard('keuangan:kelola', <TransactionsPage />)} />
+              <Route path="admin/keuangan/kategori" element={guard('keuangan:kelola', <CategoriesPage />)} />
+              <Route path="admin/profil" element={<AccountProfilePage />} />
+              <Route path="admin/keuangan/ringkasan" element={guard('keuangan:lihat', <FinanceSummaryPage />)} />
 
               {/* Portal Anak Magang Routes (M-01) */}
-              <Route path="magang/dashboard" element={<InternDashboardPage />} />
-              <Route path="magang/absensi" element={<InternAttendancePage />} />
-              <Route path="magang/logbook" element={<InternLogbookPage />} />
-              <Route path="magang/tugas" element={<InternTasksPage />} />
-              <Route path="magang/profil" element={<InternProfilePage />} />
+              <Route path="magang/dashboard" element={guard('magang:absen', <InternDashboardPage />)} />
+              <Route path="magang/absensi" element={guard('magang:absen', <InternAttendancePage />)} />
+              <Route path="magang/logbook" element={guard('magang:absen', <InternLogbookPage />)} />
+              <Route path="magang/tugas" element={guard('magang:absen', <InternTasksPage />)} />
+              <Route path="magang/profil" element={guard('magang:absen', <InternProfilePage />)} />
 
               {/* Universal dashboard fallback */}
               <Route path="dashboard" element={<RoleBasedRedirect />} />

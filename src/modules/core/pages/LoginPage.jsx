@@ -2,6 +2,15 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { AlertCircle } from 'lucide-react';
+import officePhoto from '../../../assets/login-office.jpg';
+
+// Warna brand panel (hijau tua MetroHub) + gradasi foto kantor
+const PANEL_GREEN = '#17362f';
+const green = (alpha) => `rgba(23, 54, 47, ${alpha})`;
+// Foto mengisi seluruh panel. Kiri → kanan: hijau pekat di area teks, memudar ke papan nama di kanan
+const GRADIENT_KIRI = `linear-gradient(to right, ${PANEL_GREEN} 0%, ${green(0.95)} 22%, ${green(0.7)} 45%, ${green(0.15)} 72%, ${green(0.05)} 100%)`;
+// Atas & bawah sedikit digelapkan agar logo dan footer tetap terbaca
+const GRADIENT_ATAS = `linear-gradient(to bottom, ${green(0.6)} 0%, ${green(0)} 28%, ${green(0)} 70%, ${green(0.7)} 100%)`;
 
 export const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -20,11 +29,8 @@ export const LoginPage = () => {
     try {
       const res = await login(email, password);
       if (res.success) {
-        if (res.data.user.role === 'Admin') {
-          navigate('/admin/magang/interns');
-        } else {
-          navigate('/dashboard');
-        }
+        // Arah halaman ditentukan RoleBasedRedirect berdasarkan permission
+        navigate('/', { replace: true });
       }
     } catch (err) {
       // Sesuai PRD CR-01: Pesan tanpa menyebut bagian mana yang salah
@@ -36,41 +42,61 @@ export const LoginPage = () => {
 
   return (
     <div className="min-h-screen w-full flex flex-col md:flex-row bg-[#fcfdfd] font-sans overflow-x-hidden">
-      {/* Sisi Kiri: Full Height Brand Panel (Deep Forest Green) */}
-      <div className="w-full md:w-[45%] lg:w-[42%] min-h-[340px] md:min-h-screen bg-[#17362f] text-white p-8 md:p-14 lg:p-16 flex flex-col justify-between shrink-0">
-        <div className="space-y-12">
-          {/* Logo Metro Software */}
-          <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Metro Software" className="w-8 h-8 rounded-lg object-contain shadow-xs border border-[#3b5f56]" />
-            <span className="font-semibold text-sm tracking-tight text-slate-100">
-              Metro Software
-            </span>
-          </div>
-
-          {/* Headline Utama */}
-          <div className="pt-2 md:pt-8">
-            <p className="text-[10px] tracking-[0.2em] font-bold text-[#89b4a6] uppercase mb-4">
-              Sistem Operasional Internal
-            </p>
-            <h1 className="text-3xl md:text-4xl lg:text-[42px] font-extrabold text-white tracking-tight leading-[1.15]">
-              Kerja harian <br />
-              yang tercatat <br />
-              dengan jelas.
-            </h1>
-            <p className="text-xs md:text-sm text-[#9bb8ad] mt-5 leading-relaxed max-w-sm">
-              Kelola magang, kehadiran, penugasan, dan keuangan perusahaan dalam satu ruang kerja yang tertata.
-            </p>
-          </div>
+      {/* Sisi Kiri: Brand Panel hijau tua + foto kantor Metro dengan gradasi */}
+      <div
+        className="relative overflow-hidden w-full md:w-[45%] lg:w-[42%] min-h-85 md:min-h-screen text-white flex flex-col shrink-0"
+        style={{ backgroundColor: PANEL_GREEN }}
+      >
+        {/* Foto kantor sebagai latar penuh panel. Di layar lebar foto digeser (object 20%)
+            agar papan nama Metro berada di sisi kanan, tidak tertutup judul di kiri.
+            Ganti dengan foto portrait beresolusi lebih besar bila tersedia agar lebih tajam. */}
+        <div aria-hidden="true" className="absolute inset-0 pointer-events-none select-none">
+          <img
+            src={officePhoto}
+            alt=""
+            className="w-full h-full object-cover object-[70%_center] md:object-[20%_center]"
+          />
+          <div className="absolute inset-0" style={{ backgroundImage: GRADIENT_KIRI }} />
+          <div className="absolute inset-0 hidden md:block" style={{ backgroundImage: GRADIENT_ATAS }} />
+          {/* HP: teks berada di atas foto, jadi foto digelapkan agar tetap terbaca */}
+          <div className="absolute inset-0 md:hidden" style={{ backgroundColor: green(0.72) }} />
         </div>
 
-        {/* Footer Sisi Kiri */}
-        <div className="pt-10 text-xs text-[#71988b]">
-          <span>&copy; {new Date().getFullYear()} Metro Software</span>
+        <div className="relative z-10 flex-1 p-8 md:p-14 lg:p-16 flex flex-col justify-between">
+          <div className="space-y-12">
+            {/* Logo Metro Software */}
+            <div className="flex items-center gap-3">
+              <img src="/logo.png" alt="Metro Software" className="w-8 h-8 rounded-lg object-contain shadow-xs border border-[#3b5f56]" />
+              <span className="font-semibold text-sm tracking-tight text-slate-100">
+                Metro Software
+              </span>
+            </div>
+
+            {/* Headline Utama */}
+            <div className="pt-2 md:pt-8">
+              <p className="text-[10px] tracking-[0.2em] font-bold text-[#89b4a6] uppercase mb-4">
+                Sistem Operasional Internal
+              </p>
+              <h1 className="text-3xl md:text-4xl lg:text-[42px] font-extrabold text-white tracking-tight leading-[1.15]">
+                Kerja harian <br />
+                yang tercatat <br />
+                dengan jelas.
+              </h1>
+              <p className="text-xs md:text-sm text-[#9bb8ad] mt-5 leading-relaxed max-w-sm">
+                Kelola magang, kehadiran, penugasan, dan keuangan perusahaan dalam satu ruang kerja yang tertata.
+              </p>
+            </div>
+          </div>
+
+          {/* Footer Sisi Kiri */}
+          <div className="pt-10 text-xs text-[#71988b]">
+            <span>&copy; {new Date().getFullYear()} Metro Software</span>
+          </div>
         </div>
       </div>
 
       {/* Sisi Kanan: Full Height Form Container */}
-      <div className="w-full md:w-[55%] lg:w-[58%] min-h-screen bg-[#fcfdfd] p-8 md:p-14 lg:p-20 flex flex-col justify-center">
+      <div className="w-full flex-1 md:flex-none md:w-[55%] lg:w-[58%] md:min-h-screen bg-[#fcfdfd] p-8 md:p-14 lg:p-20 flex flex-col justify-center">
         <div className="max-w-md w-full mx-auto space-y-7">
           {/* Header Form */}
           <div>

@@ -84,7 +84,7 @@ export const AdminLogbookPage = () => {
       if (!searchTerm.trim()) return true;
       const term = searchTerm.toLowerCase();
       const isi = (item.isi || '').toLowerCase();
-      const nama = (item.intern?.user?.nama || '').toLowerCase();
+      const nama = (item.nama_anak_magang || item.intern?.user?.nama || '').toLowerCase();
       return isi.includes(term) || nama.includes(term);
     });
   }, [logbooks, searchTerm]);
@@ -232,7 +232,7 @@ export const AdminLogbookPage = () => {
                 </tr>
               ) : (
                 filteredLogbooks.map((item) => {
-                  const internName = item.intern?.user?.nama || `Peserta #${item.intern_id}`;
+                  const internName = item.nama_anak_magang || item.intern?.user?.nama || `Peserta #${item.intern_id}`;
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/80 transition">
@@ -280,7 +280,7 @@ export const AdminLogbookPage = () => {
                   Detail Logbook
                 </span>
                 <h3 className="text-lg font-bold text-slate-900 leading-tight">
-                  {activeModalItem.intern?.user?.nama || `Peserta #${activeModalItem.intern_id}`}
+                  {activeModalItem.nama_anak_magang || activeModalItem.intern?.user?.nama || `Peserta #${activeModalItem.intern_id}`}
                 </h3>
               </div>
               <button

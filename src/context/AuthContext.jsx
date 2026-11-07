@@ -28,11 +28,17 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const res = await api.post('/auth/login', { email, password });
-    if (res.success && res.data) {
-      setUser(res.data);
+    if (res.success) {
+      // Respons login tidak memuat permissions, jadi ambil profil lengkap dari /auth/me
+      const me = await api.get('/auth/me').catch(() => null);
+      setUser(me?.data || res.data?.user || null);
+      return { ...res, data: { ...res.data, user: me?.data || res.data?.user } };
     }
     return res;
   };
+
+  // Dipakai setelah ubah password: sesi sudah dicabut server, cukup bersihkan state lokal
+  const clearSession = () => setUser(null);
 
   const logout = async () => {
     try {
@@ -50,7 +56,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, fetchUser, hasPermission }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, fetchUser, hasPermission, clearSession }}>
       {children}
     </AuthContext.Provider>
   );

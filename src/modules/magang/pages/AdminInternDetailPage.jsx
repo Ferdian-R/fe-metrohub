@@ -436,13 +436,29 @@ export const AdminInternDetailPage = () => {
                       <td className="px-5 py-4">{att.jam_checkout ? new Date(att.jam_checkout).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' }) + ' WIB' : 'Belum'}</td>
                       <td className="px-5 py-4 text-slate-500">{att.jarak_checkin_meter != null ? `${att.jarak_checkin_meter} m dari kantor` : '-'}</td>
                       <td className="px-5 py-4">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                          att.jam_checkin && att.jam_checkout
-                            ? 'bg-[#e7f5ec] text-[#206941]'
-                            : 'bg-amber-50 text-amber-700'
-                        }`}>
-                          {att.jam_checkin && att.jam_checkout ? 'Lengkap' : 'Belum Lengkap'}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                            att.jam_checkin && att.jam_checkout
+                              ? 'bg-[#e7f5ec] text-[#206941]'
+                              : att.checkout_terlambat
+                              ? 'bg-rose-50 text-rose-700'
+                              : 'bg-amber-50 text-amber-700'
+                          }`}>
+                            {att.jam_checkin && att.jam_checkout
+                              ? 'Lengkap'
+                              : att.checkout_terlambat
+                              ? 'Check-out tidak tercatat'
+                              : 'Belum Lengkap'}
+                          </span>
+                          {att.keterangan_koreksi && (
+                            <span
+                              title={`Dikoreksi oleh ${att.nama_admin_koreksi || 'admin'}: ${att.keterangan_koreksi}`}
+                              className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-700"
+                            >
+                              Dikoreksi
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

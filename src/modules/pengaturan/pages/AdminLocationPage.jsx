@@ -1,39 +1,91 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useToast } from '../../../context/ToastContext';
-import { MapPin, Navigation } from 'lucide-react';
+import { MapPin, Navigation, Loader2, Crosshair } from 'lucide-react';
+import { coreService } from '../../core/services/coreService';
 
 export const AdminLocationPage = () => {
   const { showToast } = useToast();
 
-  const [locationForm, setLocationForm] = useState(() => {
-    try {
-      const saved = localStorage.getItem('metro_office_location');
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // fallback
-    }
-    return {
-      latitude: '-7.747033',
-      longitude: '110.355398',
-      radius: '100',
-    };
-  });
-
+  const [locationForm, setLocationForm] = useState({ latitude: '', longitude: '', radius: '' });
+  const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [formError, setFormError] = useState('');
 
-  const handleSaveLocation = (e) => {
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await coreService.getOfficeSettings();
+        const d = res?.data;
+        if (d) {
+          setLocationForm({
+            latitude: String(d.latitude),
+            longitude: String(d.longitude),
+            radius: String(d.radius_meter),
+          });
+        }
+      } catch (err) {
+        // 404 = lokasi belum pernah diatur; form dibiarkan kosong
+        if (err?.message && !/belum diatur/i.test(err.message)) setFormError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) return setFormError('Browser tidak mendukung GPS.');
+    navigator.geolocation.getCurrentPosition(
+      (pos) =>
+        setLocationForm((f) => ({
+          ...f,
+          latitude: pos.coords.latitude.toFixed(7),
+          longitude: pos.coords.longitude.toFixed(7),
+        })),
+      () => setFormError('Gagal membaca lokasi. Pastikan izin lokasi diberikan.'),
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  };
+
+  const handleSaveLocation = async (e) => {
     e.preventDefault();
-    setIsSaving(true);
+    setFormError('');
+    const latitude = Number(locationForm.latitude);
+    const longitude = Number(locationForm.longitude);
+    const radius_meter = Number(locationForm.radius);
 
-    setTimeout(() => {
-      localStorage.setItem('metro_office_location', JSON.stringify(locationForm));
-      setIsSaving(false);
+    if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90)
+      return setFormError('Latitude harus angka antara -90 sampai 90.');
+    if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180)
+      return setFormError('Longitude harus angka antara -180 sampai 180.');
+    if (!Number.isInteger(radius_meter) || radius_meter <= 0 || radius_meter > 10000)
+      return setFormError('Radius harus bilangan bulat 1 sampai 10.000 meter.');
+
+    try {
+      setIsSaving(true);
+      const res = await coreService.updateOfficeSettings({ latitude, longitude, radius_meter });
+      const d = res?.data;
+      if (d) {
+        setLocationForm({ latitude: String(d.latitude), longitude: String(d.longitude), radius: String(d.radius_meter) });
+      }
       showToast({
         title: 'Lokasi kantor diperbarui',
-        message: `Titik koordinat ${locationForm.latitude}, ${locationForm.longitude} (Radius ${locationForm.radius}m) berhasil disimpan.`,
+        message: `Titik ${latitude}, ${longitude} (radius ${radius_meter} m) berlaku untuk absensi berikutnya.`,
       });
-    }, 400);
+    } catch (err) {
+      setFormError(err?.details?.[0]?.message || err?.message || 'Gagal menyimpan lokasi kantor.');
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="py-20 text-center text-slate-400">
+        <Loader2 className="w-8 h-8 animate-spin mx-auto text-[#17362f] mb-3" />
+        <p className="text-sm">Memuat lokasi kantor...</p>
+      </div>
+    );
+  }
 
   const radiusNum = Number(locationForm.radius) || 100;
   // Calculate relative circle scale for preview (min 120px, max 260px)
@@ -102,8 +154,9 @@ export const AdminLocationPage = () => {
               <div className="flex rounded-xl border border-slate-300 focus-within:ring-1 focus-within:ring-[#17362f] focus-within:border-[#17362f] overflow-hidden">
                 <input
                   type="number"
-                  min="10"
-                  max="5000"
+                  min="1"
+                  max="10000"
+                  step="1"
                   required
                   value={locationForm.radius}
                   onChange={(e) => setLocationForm({ ...locationForm, radius: e.target.value })}
@@ -114,6 +167,16 @@ export const AdminLocationPage = () => {
                 </span>
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={handleUseCurrentLocation}
+              className="inline-flex items-center gap-2 text-xs font-semibold text-[#17362f] hover:underline cursor-pointer"
+            >
+              <Crosshair className="w-3.5 h-3.5" /> Gunakan lokasi saya saat ini
+            </button>
+
+            {formError && <p className="text-xs text-rose-600 font-medium">{formError}</p>}
 
             {/* Callout Notice */}
             <div className="bg-[#edf6f1] border border-[#cde6d7] rounded-xl p-3.5 flex items-start gap-2.5 text-xs text-slate-700 font-source-sans">
@@ -174,14 +237,21 @@ export const AdminLocationPage = () => {
 
           {/* Keterangan Bawah Peta */}
           <div>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#fef3c7] text-[#92400e]">
-              Data contoh
-            </span>
-            <h3 className="text-sm font-bold text-slate-900 font-lexend mt-2">
+            <h3 className="text-sm font-bold text-slate-900 font-lexend">
               Preview radius kantor
             </h3>
             <p className="text-xs text-slate-500 font-source-sans mt-0.5">
-              Peta simulasi dengan koordinat dan radius contoh.
+              Ilustrasi radius (bukan skala peta).{' '}
+              {locationForm.latitude && locationForm.longitude && (
+                <a
+                  href={`https://www.google.com/maps?q=${locationForm.latitude},${locationForm.longitude}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-[#17362f] hover:underline"
+                >
+                  Buka titik di Google Maps
+                </a>
+              )}
             </p>
           </div>
         </div>

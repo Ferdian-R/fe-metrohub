@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { ShieldCheck, LogOut, Loader2, AlertCircle } from 'lucide-react';
 import { magangService } from '../services/magangService';
+import { ChangePasswordCard } from '../../core/components/ChangePasswordCard';
 
 export const InternProfilePage = () => {
   const { user, logout } = useAuth();
@@ -179,6 +180,10 @@ export const InternProfilePage = () => {
                 </span>
               </div>
             </div>
+          </div>
+
+          <div className="md:col-span-3">
+            <ChangePasswordCard />
           </div>
         </div>
       )}

@@ -7,12 +7,36 @@ import {
   MapPin,
   CheckCircle2,
   AlertTriangle,
-  ShieldCheck,
   Loader2,
   AlertCircle,
   ArrowRight,
 } from 'lucide-react';
 import { magangService } from '../services/magangService';
+
+// NF-07: foto dikompres di browser, maksimal 500 KB per foto
+const MAX_PHOTO_BYTES = 500 * 1024;
+const MAX_PHOTO_SIDE = 1024;
+
+const compressToJpeg = async (source, srcW, srcH) => {
+  const scale = Math.min(1, MAX_PHOTO_SIDE / Math.max(srcW, srcH));
+  let w = Math.round(srcW * scale);
+  let h = Math.round(srcH * scale);
+  const canvas = document.createElement('canvas');
+  const toBlob = (q) => new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', q));
+
+  for (let attempt = 0; attempt < 6; attempt++) {
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext('2d').drawImage(source, 0, 0, w, h);
+    for (const q of [0.8, 0.65, 0.5, 0.4]) {
+      const blob = await toBlob(q);
+      if (blob && blob.size <= MAX_PHOTO_BYTES) return blob;
+    }
+    w = Math.round(w * 0.75);
+    h = Math.round(h * 0.75);
+  }
+  return null;
+};
 
 export const InternAttendancePage = () => {
   const navigate = useNavigate();
@@ -36,7 +60,7 @@ export const InternAttendancePage = () => {
   const videoRef = useRef(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const streamRef = useRef(null);
-  const fileInputRef = useRef(null);
+  const [cameraError, setCameraError] = useState(null);
 
   const fetchTodayStatus = useCallback(async () => {
     try {
@@ -104,9 +128,14 @@ export const InternAttendancePage = () => {
   }, [requestCurrentLocation]);
 
   // Start Camera Stream
+  // BR-03: foto wajib diambil langsung dari kamera; tidak ada jalur unggah dari galeri/file.
   const handleStartCamera = async () => {
+    setCameraError(null);
     try {
       stopCameraStream();
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('MediaDevices API tidak tersedia');
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
         audio: false,
@@ -118,75 +147,32 @@ export const InternAttendancePage = () => {
       }
       setIsCameraActive(true);
     } catch (err) {
-      console.warn('Webcam stream failed, fallback to file input:', err);
-      if (fileInputRef.current) {
-        fileInputRef.current.click();
-      }
+      console.warn('Webcam stream failed:', err);
+      const denied = err?.name === 'NotAllowedError' || err?.name === 'SecurityError';
+      setCameraError(
+        denied
+          ? 'Akses kamera ditolak. Izinkan akses kamera di pengaturan browser, lalu coba lagi.'
+          : 'Kamera tidak dapat dibuka. Pastikan perangkat memiliki kamera dan halaman dibuka melalui HTTPS.'
+      );
     }
   };
 
   // Capture Photo from Video Canvas
-  const handleCaptureFromVideo = () => {
-    if (!videoRef.current) return;
-    const canvas = document.createElement('canvas');
-    canvas.width = videoRef.current.videoWidth || 640;
-    canvas.height = videoRef.current.videoHeight || 480;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-
-    canvas.toBlob(
-      (blob) => {
-        if (blob) {
-          setPhotoBlob(blob);
-          setPhotoPreview(URL.createObjectURL(blob));
-          stopCameraStream();
-          showToast({
-            title: 'Foto wajah siap',
-            message: 'Foto berhasil diambil dan siap dikirim.',
-          });
-        }
-      },
-      'image/jpeg',
-      0.75
-    );
-  };
-
-  // Capture Photo from File Input fallback
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Compress using canvas
-    const img = new Image();
-    const reader = new FileReader();
-    reader.onload = (re) => {
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const maxW = 640;
-        const scale = maxW / img.width;
-        canvas.width = maxW;
-        canvas.height = img.height * scale;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              setPhotoBlob(blob);
-              setPhotoPreview(URL.createObjectURL(blob));
-              showToast({
-                title: 'Foto wajah siap',
-                message: 'Foto siap dikirim untuk absensi.',
-              });
-            }
-          },
-          'image/jpeg',
-          0.75
-        );
-      };
-      img.src = re.target.result;
-    };
-    reader.readAsDataURL(file);
+  const handleCaptureFromVideo = async () => {
+    const video = videoRef.current;
+    if (!video) return;
+    const blob = await compressToJpeg(video, video.videoWidth || 640, video.videoHeight || 480);
+    if (!blob) {
+      showToast({ title: 'Foto gagal diproses', message: 'Silakan ambil ulang foto.', type: 'error' });
+      return;
+    }
+    setPhotoBlob(blob);
+    setPhotoPreview(URL.createObjectURL(blob));
+    stopCameraStream();
+    showToast({
+      title: 'Foto wajah siap',
+      message: 'Foto berhasil diambil dan siap dikirim.',
+    });
   };
 
   // Submit Check-in or Check-out
@@ -386,12 +372,13 @@ export const InternAttendancePage = () => {
                       alt="Preview Foto Absensi"
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+                    <div className="absolute bottom-3 inset-x-0 flex items-center justify-center gap-2">
                       <button
                         type="button"
                         onClick={handleStartCamera}
-                        className="px-3.5 py-1.5 bg-white text-slate-800 rounded-lg text-xs font-semibold shadow"
+                        className="px-3.5 py-1.5 bg-white/95 text-slate-800 rounded-lg text-xs font-semibold shadow flex items-center gap-1.5"
                       >
+                        <RefreshCw className="w-3.5 h-3.5" />
                         Foto Ulang
                       </button>
                     </div>
@@ -418,27 +405,17 @@ export const InternAttendancePage = () => {
                         <Camera className="w-4 h-4" />
                         <span>Buka Kamera</span>
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg shadow-2xs transition"
-                      >
-                        Upload Foto
-                      </button>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Hidden file input fallback */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                capture="user"
-                className="hidden"
-                onChange={handleFileChange}
-              />
+              {cameraError && (
+                <p className="text-[11px] text-rose-600 flex items-start gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
+                  <span>{cameraError}</span>
+                </p>
+              )}
             </div>
 
             {/* Input Lokasi GPS */}
@@ -494,7 +471,7 @@ export const InternAttendancePage = () => {
               {!todayData?.sudah_checkin ? (
                 <button
                   type="button"
-                  disabled={submitting || !todayData?.bisa_checkin}
+                  disabled={submitting || !photoBlob || !todayData?.bisa_checkin}
                   onClick={() => handleSendAttendance('checkin')}
                   className="w-full sm:w-auto px-6 py-3 bg-[#17362f] hover:bg-[#122b25] disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs md:text-sm font-semibold rounded-lg shadow-xs transition flex items-center justify-center gap-2"
                 >
@@ -505,7 +482,7 @@ export const InternAttendancePage = () => {
                 <div className="w-full flex flex-col sm:flex-row items-center gap-3">
                   <button
                     type="button"
-                    disabled={submitting || !todayData?.bisa_checkout}
+                    disabled={submitting || !photoBlob || !todayData?.bisa_checkout}
                     onClick={() => handleSendAttendance('checkout')}
                     className="w-full sm:w-auto px-6 py-3 bg-[#17362f] hover:bg-[#122b25] disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs md:text-sm font-semibold rounded-lg shadow-xs transition flex items-center justify-center gap-2"
                   >
@@ -531,6 +508,13 @@ export const InternAttendancePage = () => {
                 </div>
               )}
             </div>
+
+            {/* MG-03: tombol simpan baru aktif setelah foto diambil */}
+            {!photoBlob && !todayData?.sudah_checkout && todayData?.dalam_masa_magang !== false && (
+              <p className="text-[11px] text-slate-500 -mt-3">
+                Tombol kirim aktif setelah foto wajah diambil dari kamera.
+              </p>
+            )}
           </div>
 
           {/* Kolom Kanan: Rincian Status Hari Ini */}
