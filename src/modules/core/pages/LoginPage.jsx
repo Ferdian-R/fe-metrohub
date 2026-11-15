@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff } from 'lucide-react';
 import officePhoto from '../../../assets/login-office.jpg';
 
 // Warna brand panel (hijau tua MetroHub) + gradasi foto kantor
@@ -146,14 +146,15 @@ export const LoginPage = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-4 py-2.5 pr-24 rounded-lg border border-slate-300 bg-[#f9fafb] text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#17362f]/20 focus:border-[#17362f] transition"
+                  className="w-full px-4 py-2.5 pr-10 rounded-lg border border-slate-300 bg-[#f9fafb] text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#17362f]/20 focus:border-[#17362f] transition"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-500 hover:text-slate-800 transition select-none"
+                  aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition p-1 cursor-pointer"
                 >
-                  {showPassword ? 'Sembunyikan' : 'Tampilkan'}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
