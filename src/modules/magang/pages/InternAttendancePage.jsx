@@ -81,19 +81,32 @@ export const InternAttendancePage = () => {
   }, [fetchTodayStatus]);
 
   // Cleanup camera stream
-  const stopCameraStream = () => {
+  const stopCameraStream = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
     setIsCameraActive(false);
-  };
+  }, []);
 
   useEffect(() => {
     return () => {
       stopCameraStream();
     };
-  }, []);
+  }, [stopCameraStream]);
+
+  // Sinkronisasi stream video ke elemen video saat kamera aktif
+  useEffect(() => {
+    if (isCameraActive && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch((err) => {
+        console.warn('Video play error:', err);
+      });
+    }
+  }, [isCameraActive]);
 
   // Request GPS Location
   const requestCurrentLocation = useCallback(() => {
@@ -116,7 +129,12 @@ export const InternAttendancePage = () => {
       },
       (err) => {
         console.warn('Geolocation error:', err);
-        setLocationError('Gagal mendeteksi lokasi GPS. Pastikan izin lokasi aktif.');
+        const isDenied = err?.code === 1; // PERMISSION_DENIED
+        setLocationError(
+          isDenied
+            ? 'Izin akses lokasi ditolak oleh browser. Harap aktifkan izin lokasi untuk melakukan absensi.'
+            : 'Gagal mendeteksi lokasi GPS. Pastikan GPS aktif dan coba lagi.'
+        );
         setLocationLoading(false);
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
@@ -134,34 +152,56 @@ export const InternAttendancePage = () => {
     try {
       stopCameraStream();
       if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error('MediaDevices API tidak tersedia');
+        throw new Error('MediaDevices API tidak tersedia pada browser ini.');
       }
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
         audio: false,
       });
       streamRef.current = stream;
+      setIsCameraActive(true);
+      // Jika video element sudah ada, segera pasang stream
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        videoRef.current.play().catch((e) => console.warn('Play error:', e));
       }
-      setIsCameraActive(true);
     } catch (err) {
       console.warn('Webcam stream failed:', err);
-      const denied = err?.name === 'NotAllowedError' || err?.name === 'SecurityError';
+      const denied = err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError' || err?.name === 'SecurityError';
       setCameraError(
         denied
-          ? 'Akses kamera ditolak. Izinkan akses kamera di pengaturan browser, lalu coba lagi.'
-          : 'Kamera tidak dapat dibuka. Pastikan perangkat memiliki kamera dan halaman dibuka melalui HTTPS.'
+          ? 'Akses kamera ditolak. Izinkan akses kamera di pengaturan browser Anda, lalu coba lagi.'
+          : 'Kamera tidak dapat dibuka. Pastikan perangkat memiliki kamera dan halaman dibuka melalui HTTPS atau localhost.'
       );
     }
   };
+
+  // Callback ref untuk elemen video agar srcObject langsung terpasang saat video dirender di DOM
+  const handleVideoRef = useCallback((element) => {
+    videoRef.current = element;
+    if (element && streamRef.current) {
+      element.srcObject = streamRef.current;
+      element.play().catch((err) => {
+        console.warn('Video play error on element attach:', err);
+      });
+    }
+  }, []);
 
   // Capture Photo from Video Canvas
   const handleCaptureFromVideo = async () => {
     const video = videoRef.current;
     if (!video) return;
-    const blob = await compressToJpeg(video, video.videoWidth || 640, video.videoHeight || 480);
+    if (video.readyState < 2) {
+      showToast({
+        title: 'Kamera sedang memuat',
+        message: 'Tunggu sejenak hingga gambar kamera muncul sebelum mengambil foto.',
+        type: 'error',
+      });
+      return;
+    }
+    const width = video.videoWidth || 640;
+    const height = video.videoHeight || 480;
+    const blob = await compressToJpeg(video, width, height);
     if (!blob) {
       showToast({ title: 'Foto gagal diproses', message: 'Silakan ambil ulang foto.', type: 'error' });
       return;
@@ -341,7 +381,7 @@ export const InternAttendancePage = () => {
                 {isCameraActive ? (
                   <div className="w-full h-full relative bg-black flex items-center justify-center">
                     <video
-                      ref={videoRef}
+                      ref={handleVideoRef}
                       autoPlay
                       playsInline
                       muted

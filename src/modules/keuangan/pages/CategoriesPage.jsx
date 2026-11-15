@@ -436,23 +436,28 @@ export const CategoriesPage = () => {
     }
     const duplicate = categories.some(
       (category) =>
-        category.jenis === form.jenis &&
-        category.nama.trim().toLocaleLowerCase('id-ID') === nama.toLocaleLowerCase('id-ID') &&
+        category.jenis?.toLowerCase() === form.jenis?.toLowerCase() &&
+        category.nama?.trim().toLocaleLowerCase('id-ID') === nama.toLocaleLowerCase('id-ID') &&
         getCategoryId(category) !== getCategoryId(selectedCategory ?? {})
     );
     if (duplicate) {
-      setActionError('Nama kategori dengan jenis tersebut sudah tersedia.');
+      setActionError('Kategori dengan nama dan jenis tersebut sudah ada.');
       return;
     }
 
     setSaving(true);
     setActionError('');
     try {
-      const data = { nama, jenis: form.jenis, aktif: Boolean(form.aktif) };
       if (modalMode === 'edit') {
-        await financeService.updateCategory(getCategoryId(selectedCategory), data);
+        await financeService.updateCategory(getCategoryId(selectedCategory), {
+          nama,
+          aktif: Boolean(form.aktif),
+        });
       } else {
-        await financeService.createCategory(data);
+        await financeService.createCategory({
+          nama,
+          jenis: form.jenis.toUpperCase(),
+        });
       }
 
       setModalMode(null);
@@ -472,7 +477,7 @@ export const CategoriesPage = () => {
     setActionError('');
     try {
       if (action === 'deactivate') {
-        await financeService.toggleCategoryStatus(getCategoryId(selectedCategory));
+        await financeService.updateCategory(getCategoryId(selectedCategory), { aktif: false });
         showSuccess('Kategori berhasil dinonaktifkan.');
       } else {
         await financeService.deleteCategory(getCategoryId(selectedCategory));
@@ -483,7 +488,8 @@ export const CategoriesPage = () => {
       setSelectedCategory(null);
       await loadCategories();
     } catch (error) {
-      setActionError(getErrorMessage(error));
+      const msg = getErrorMessage(error);
+      setActionError(msg);
     } finally {
       setSaving(false);
     }

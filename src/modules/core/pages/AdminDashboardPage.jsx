@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, TrendingUp, TrendingDown, Wallet, Loader2, AlertCircle, ArrowRight } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, Wallet, Loader2, AlertCircle, ArrowRight, RefreshCw } from 'lucide-react';
 import { coreService } from '../services/coreService';
 import { useAuth } from '../../../context/AuthContext';
 
@@ -128,11 +128,22 @@ export const AdminDashboardPage = () => {
 
   return (
     <div className="space-y-6 w-full pb-16 font-sans">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight font-lexend">Dashboard</h1>
-        <p className="text-xs md:text-sm text-slate-500 mt-1">
-          Selamat datang{user?.nama ? `, ${user.nama}` : ''}. Ringkasan kondisi perusahaan saat ini.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight font-lexend">Dashboard</h1>
+          <p className="text-xs md:text-sm text-slate-500 mt-1">
+            Selamat datang{user?.nama ? `, ${user.nama}` : ''}. Ringkasan kondisi perusahaan saat ini.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={load}
+          disabled={loading}
+          className="inline-flex items-center gap-2 self-start sm:self-auto px-4 py-2 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg shadow-xs hover:bg-slate-50 disabled:opacity-50 transition cursor-pointer"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <span>Perbarui Data</span>
+        </button>
       </div>
 
       {error && (

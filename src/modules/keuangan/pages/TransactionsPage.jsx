@@ -142,42 +142,74 @@ export const TransactionsPage = () => {
     setPageError('');
 
     try {
-      const [transactionResponse, summaryResponse, categoryResponse] = await Promise.all([
+      const [transResult, sumResult, catResult] = await Promise.allSettled([
         financeService.getTransactions({ periode: period }),
         financeService.getMonthlySummary({ periode: period }),
         financeService.getCategories(),
       ]);
 
-      const categoryList = extractList(categoryResponse, ['categories', 'items', 'rows']);
-      const categoriesById = new Map(
-        categoryList.map((category) => [
-          String(category.id ?? category.category_id),
-          category.nama ?? category.name ?? '',
-        ])
-      );
-      const transactionList = extractList(transactionResponse, [
-        'transactions',
-        'transaksi',
-        'items',
-        'rows',
-      ]);
-      const normalizedTransactions = transactionList
-        .filter((transaction) => transaction.deleted_at == null && transaction.deletedAt == null)
-        .map((transaction) => normalizeTransaction(transaction, categoriesById))
-        .filter((transaction) => getTransactionDate(transaction).startsWith(period))
-        .sort((left, right) => {
-          const dateOrder = getTransactionDate(left).localeCompare(getTransactionDate(right));
-          if (dateOrder !== 0) return dateOrder;
-          return String(left.id ?? '').localeCompare(String(right.id ?? ''), undefined, {
-            numeric: true,
-          });
-        });
-      const summary = extractSummary(summaryResponse);
+      if (requestId.current !== currentRequestId) return;
 
-      if (requestId.current === currentRequestId) {
-        setTransactions(normalizedTransactions);
-        setCategories(categoryList);
-        setPriorBalance(Number.isFinite(summary.priorBalance) ? summary.priorBalance : null);
+      let categoryList = [];
+      const categoriesById = new Map();
+      if (catResult.status === 'fulfilled') {
+        try {
+          categoryList = extractList(catResult.value, ['categories', 'items', 'rows']);
+          categoryList.forEach((cat) => {
+            categoriesById.set(
+              String(cat.id ?? cat.category_id),
+              cat.nama ?? cat.name ?? ''
+            );
+          });
+          setCategories(categoryList);
+        } catch (e) {
+          console.warn('Error extracting categories:', e);
+        }
+      }
+
+      if (transResult.status === 'fulfilled') {
+        try {
+          const transactionList = extractList(transResult.value, [
+            'transactions',
+            'transaksi',
+            'items',
+            'rows',
+          ]);
+          const normalizedTransactions = transactionList
+            .filter((transaction) => transaction.deleted_at == null && transaction.deletedAt == null)
+            .map((transaction) => normalizeTransaction(transaction, categoriesById))
+            .filter((transaction) => getTransactionDate(transaction).startsWith(period))
+            .sort((left, right) => {
+              const dateOrder = getTransactionDate(left).localeCompare(getTransactionDate(right));
+              if (dateOrder !== 0) return dateOrder;
+              return String(left.id ?? '').localeCompare(String(right.id ?? ''), undefined, {
+                numeric: true,
+              });
+            });
+          setTransactions(normalizedTransactions);
+        } catch (e) {
+          console.warn('Error parsing transaction list:', e);
+          setTransactions([]);
+        }
+      } else {
+        setTransactions([]);
+        const err = transResult.reason;
+        if (err?.message?.includes('501') || err?.message?.includes('not implemented')) {
+          setPageError('Fitur transaksi backend sedang dalam proses implementasi (501 Not Implemented).');
+        } else {
+          setPageError(getErrorMessage(err));
+        }
+      }
+
+      if (sumResult.status === 'fulfilled') {
+        try {
+          const summary = extractSummary(sumResult.value);
+          setPriorBalance(Number.isFinite(summary.priorBalance) ? summary.priorBalance : null);
+        } catch {
+          setPriorBalance(null);
+        }
+      } else {
+        setPriorBalance(null);
       }
     } catch (error) {
       if (requestId.current === currentRequestId) {
