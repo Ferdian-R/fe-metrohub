@@ -69,8 +69,11 @@ const extractSummary = (response) => {
 
 const extractCategoryName = (transaction, categoriesById) => {
   const nestedCategory =
-    transaction.category ?? transaction.kategori ?? transaction.category_data;
+    transaction.category ??
+    (typeof transaction.kategori === 'object' ? transaction.kategori : null) ??
+    transaction.category_data;
   const directName =
+    (typeof transaction.kategori === 'string' ? transaction.kategori : null) ??
     transaction.nama_kategori ??
     transaction.category_name ??
     transaction.kategori_nama ??
@@ -93,6 +96,7 @@ const normalizeTransaction = (transaction, categoriesById) => ({
   jenis: String(transaction.jenis ?? transaction.type ?? '').toLocaleLowerCase('id-ID'),
   nominal: Number(transaction.nominal ?? transaction.amount),
   saldoBerjalan:
+    transaction.saldo ??
     transaction.saldo_berjalan ??
     transaction.saldoBerjalan ??
     transaction.running_balance ??
@@ -142,9 +146,8 @@ export const TransactionsPage = () => {
     setPageError('');
 
     try {
-      const [transactionResponse, summaryResponse, categoryResponse] = await Promise.all([
+      const [transactionResponse, categoryResponse] = await Promise.all([
         financeService.getTransactions({ periode: period }),
-        financeService.getMonthlySummary({ periode: period }),
         financeService.getCategories(),
       ]);
 
@@ -172,7 +175,7 @@ export const TransactionsPage = () => {
             numeric: true,
           });
         });
-      const summary = extractSummary(summaryResponse);
+      const summary = extractSummary(transactionResponse);
 
       if (requestId.current === currentRequestId) {
         setTransactions(normalizedTransactions);

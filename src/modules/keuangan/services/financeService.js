@@ -15,6 +15,7 @@ export const financeService = {
   getCategories: (params) => api.get('/keuangan/categories', { params }),
   createCategory: (data) => api.post('/keuangan/categories', data),
   updateCategory: (id, data) => api.patch(`/keuangan/categories/${id}`, data),
+  toggleCategoryStatus: (id, aktif = false) => api.patch(`/keuangan/categories/${id}`, { aktif }),
   deleteCategory: (id) => api.delete(`/keuangan/categories/${id}`),
 
   // Transaksi Keuangan

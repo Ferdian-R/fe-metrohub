@@ -76,6 +76,8 @@ const readBreakdown = (summary, type) => {
       ? ['pemasukan', 'income', 'incomes']
       : ['pengeluaran', 'expense', 'expenses'];
   const breakdown =
+    summary.per_kategori ??
+    summary.perKategori ??
     summary.categoryBreakdown ??
     summary.category_breakdown ??
     summary.rincianKategori ??
@@ -114,8 +116,14 @@ const normalizeBreakdownItem = (item, index, total) => {
   const rawPercentage = readNumber(item, ['percentage', 'persentase', 'percent']);
 
   return {
-    id: item.categoryId ?? item.category_id ?? item.id ?? `${item.nama ?? item.name}-${index}`,
-    name: item.nama ?? item.name ?? item.category_name ?? item.nama_kategori ?? 'Kategori',
+    id: item.categoryId ?? item.category_id ?? item.id ?? `${item.kategori ?? item.nama ?? item.name}-${index}`,
+    name:
+      (typeof item.kategori === 'string' ? item.kategori : null) ??
+      item.nama ??
+      item.name ??
+      item.category_name ??
+      item.nama_kategori ??
+      'Kategori',
     amount,
     percentage:
       rawPercentage ?? (total > 0 ? Math.round((amount / total) * 10000) / 100 : 0),
@@ -219,8 +227,17 @@ export const FinanceSummaryPage = () => {
     setError('');
     setSummary(null);
     try {
-      const response = await financeService.getMonthlySummary({ periode: appliedPeriod });
-      setSummary(unwrapSummary(response));
+      const [response, ledgerRes] = await Promise.all([
+        financeService.getMonthlySummary({ periode: appliedPeriod }),
+        financeService.getTransactions({ periode: appliedPeriod }).catch(() => null),
+      ]);
+      const unwrapped = unwrapSummary(response);
+      const ledgerData = ledgerRes?.data ?? ledgerRes;
+      setSummary({
+        ...unwrapped,
+        ...(ledgerData?.saldo_awal !== undefined && { saldo_awal: ledgerData.saldo_awal }),
+        ...(ledgerData?.saldo_akhir !== undefined && { saldo_akhir: ledgerData.saldo_akhir }),
+      });
     } catch (requestError) {
       setSummary(null);
       setError(getErrorMessage(requestError));
@@ -249,7 +266,7 @@ export const FinanceSummaryPage = () => {
       'expense_total',
     ]);
     const periodDifference =
-      readNumber(summary, ['selisihPeriode', 'selisih_periode', 'netCashflow', 'net_cashflow']) ??
+      readNumber(summary, ['saldo', 'selisihPeriode', 'selisih_periode', 'netCashflow', 'net_cashflow']) ??
       (totalIncome !== null && totalExpense !== null ? totalIncome - totalExpense : null);
     const openingBalance = readNumber(summary, [
       'saldoAwal',

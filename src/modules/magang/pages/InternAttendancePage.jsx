@@ -90,6 +90,13 @@ export const InternAttendancePage = () => {
   };
 
   useEffect(() => {
+    if (isCameraActive && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [isCameraActive]);
+
+  useEffect(() => {
     return () => {
       stopCameraStream();
     };
@@ -141,10 +148,6 @@ export const InternAttendancePage = () => {
         audio: false,
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
       setIsCameraActive(true);
     } catch (err) {
       console.warn('Webcam stream failed:', err);
@@ -181,6 +184,7 @@ export const InternAttendancePage = () => {
       showToast({
         title: 'Foto wajah diperlukan',
         message: 'Silakan ambil foto wajah terlebih dahulu.',
+        type: 'error',
       });
       return;
     }
@@ -189,6 +193,7 @@ export const InternAttendancePage = () => {
       showToast({
         title: 'Lokasi GPS diperlukan',
         message: 'Aktifkan izin lokasi browser untuk memverifikasi posisi Anda.',
+        type: 'error',
       });
       requestCurrentLocation();
       return;
@@ -223,6 +228,7 @@ export const InternAttendancePage = () => {
       showToast({
         title: 'Gagal mengirim absensi',
         message: err?.message || 'Terjadi kesalahan sistem',
+        type: 'error',
       });
     } finally {
       setSubmitting(false);
