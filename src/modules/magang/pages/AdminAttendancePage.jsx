@@ -27,7 +27,23 @@ const toTimeInputWIB = (iso) => {
 };
 
 // Tanggal absensi (YYYY-MM-DD) + jam WIB → ISO dengan offset +07:00
-const toIsoWIB = (tanggal, time) => `${tanggal}T${time}:00+07:00`;
+const toIsoWIB = (tanggal, time) => {
+  if (!tanggal || !time) return '';
+  const dateOnly = String(tanggal).slice(0, 10);
+  return `${dateOnly}T${time}:00+07:00`;
+};
+
+// URL helper untuk foto absensi
+const getPhotoUrl = (filename) => {
+  if (!filename) return null;
+  if (filename.startsWith('http://') || filename.startsWith('https://') || filename.startsWith('data:')) {
+    return filename;
+  }
+  if (filename.startsWith('/')) {
+    return filename;
+  }
+  return `/api/v1/magang/attendances/photos/${filename}`;
+};
 
 const EMPTY_KOREKSI = { jam_checkin: '', jam_checkout: '', keterangan: '' };
 
@@ -430,16 +446,23 @@ export const AdminAttendancePage = () => {
                 </div>
 
                 {activeModalItem.foto_checkin ? (
-                  <div className="w-full max-w-xs mx-auto overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                  <div className="w-full max-w-xs mx-auto overflow-hidden rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center min-h-[192px]">
                     <img
-                      src={`/api/v1/magang/attendances/photos/${activeModalItem.foto_checkin}`}
+                      src={getPhotoUrl(activeModalItem.foto_checkin)}
                       alt="Foto Check-in"
-                      className="w-full h-48 object-cover"
+                      className="w-full h-48 object-cover rounded-lg"
                       onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = 'https://placehold.co/400x300?text=Foto+Absensi';
+                        e.target.style.display = 'none';
+                        if (e.target.nextSibling) {
+                          e.target.nextSibling.style.display = 'flex';
+                        }
                       }}
                     />
+                    <div style={{ display: 'none' }} className="w-full h-48 p-4 flex flex-col items-center justify-center text-center text-slate-400 bg-slate-50">
+                      <AlertCircle className="w-6 h-6 mb-1 text-slate-400" />
+                      <span className="text-xs font-medium text-slate-600">Foto gagal dimuat</span>
+                      <span className="text-[10px] text-slate-400">File foto tidak tersedia di server</span>
+                    </div>
                   </div>
                 ) : (
                   <p className="text-xs text-slate-400 italic text-center py-2">
@@ -469,16 +492,23 @@ export const AdminAttendancePage = () => {
                 </div>
 
                 {activeModalItem.foto_checkout ? (
-                  <div className="w-full max-w-xs mx-auto overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                  <div className="w-full max-w-xs mx-auto overflow-hidden rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center min-h-[192px]">
                     <img
-                      src={`/api/v1/magang/attendances/photos/${activeModalItem.foto_checkout}`}
+                      src={getPhotoUrl(activeModalItem.foto_checkout)}
                       alt="Foto Check-out"
-                      className="w-full h-48 object-cover"
+                      className="w-full h-48 object-cover rounded-lg"
                       onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = 'https://placehold.co/400x300?text=Foto+Absensi';
+                        e.target.style.display = 'none';
+                        if (e.target.nextSibling) {
+                          e.target.nextSibling.style.display = 'flex';
+                        }
                       }}
                     />
+                    <div style={{ display: 'none' }} className="w-full h-48 p-4 flex flex-col items-center justify-center text-center text-slate-400 bg-slate-50">
+                      <AlertCircle className="w-6 h-6 mb-1 text-slate-400" />
+                      <span className="text-xs font-medium text-slate-600">Foto gagal dimuat</span>
+                      <span className="text-[10px] text-slate-400">File foto tidak tersedia di server</span>
+                    </div>
                   </div>
                 ) : (
                   <p className="text-xs text-slate-400 italic text-center py-2">
@@ -638,7 +668,7 @@ export const AdminAttendancePage = () => {
               </button>
               <button
                 type="submit"
-                disabled={koreksiSubmitting || !koreksiForm.keterangan.trim()}
+                disabled={koreksiSubmitting || !koreksiForm.jam_checkin || !koreksiForm.keterangan.trim()}
                 className="px-4 py-2 bg-[#17362f] text-white text-xs font-semibold rounded-lg hover:bg-[#122b25] disabled:bg-slate-300 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
               >
                 {koreksiSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}

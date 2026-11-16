@@ -114,12 +114,24 @@ const TransactionModals = ({
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    if (!form.tanggal || !form.category_id || !form.keterangan.trim()) {
-      setFormError('Tanggal, kategori, dan keterangan wajib diisi.');
+    if (!form.tanggal) {
+      setFormError('Tanggal transaksi wajib diisi.');
       return;
     }
-    if (!Number.isInteger(parsedNominal) || parsedNominal <= 0) {
-      setFormError('Nominal harus lebih besar dari Rp0.');
+    if (!form.category_id) {
+      setFormError('Kategori transaksi wajib dipilih.');
+      return;
+    }
+    if (!form.keterangan || !form.keterangan.trim()) {
+      setFormError('Keterangan transaksi wajib diisi.');
+      return;
+    }
+    if (form.nominal === '' || form.nominal === null || form.nominal === undefined || isNaN(Number(form.nominal))) {
+      setFormError('Nominal transaksi harus berupa angka valid.');
+      return;
+    }
+    if (!Number.isFinite(parsedNominal) || parsedNominal <= 0) {
+      setFormError('Nominal harus lebih dari 0.');
       return;
     }
     setFormError('');

@@ -13,9 +13,20 @@ import api from '../../../api/client';
 export const financeService = {
   // Kategori Keuangan
   getCategories: (params) => api.get('/keuangan/categories', { params }),
-  createCategory: (data) => api.post('/keuangan/categories', data),
-  updateCategory: (id, data) => api.patch(`/keuangan/categories/${id}`, data),
-  toggleCategoryStatus: (id, aktif = false) => api.patch(`/keuangan/categories/${id}`, { aktif }),
+  createCategory: (data) =>
+    api.post('/keuangan/categories', {
+      nama: data.nama?.trim(),
+      jenis: String(data.jenis).toUpperCase(),
+      ...(data.aktif !== undefined && { aktif: Boolean(data.aktif) }),
+    }),
+  updateCategory: (id, data) => {
+    const payload = {};
+    if (data.nama !== undefined) payload.nama = String(data.nama).trim();
+    if (data.aktif !== undefined) payload.aktif = Boolean(data.aktif);
+    return api.patch(`/keuangan/categories/${id}`, payload);
+  },
+  toggleCategoryStatus: (id, aktif = false) =>
+    api.patch(`/keuangan/categories/${id}`, { aktif: Boolean(aktif) }),
   deleteCategory: (id) => api.delete(`/keuangan/categories/${id}`),
 
   // Transaksi Keuangan

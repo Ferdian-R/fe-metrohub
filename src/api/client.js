@@ -1,4 +1,4 @@
-﻿import axios from 'axios';
+import axios from 'axios';
 
 const api = axios.create({
   baseURL: '/api/v1',
@@ -6,6 +6,22 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+api.interceptors.request.use((config) => {
+  // Jika mengirim FormData (misal: upload foto absensi), biarkan browser/Axios
+  // mengisi Content-Type secara otomatis beserta multipart boundary-nya.
+  if (config.data instanceof FormData) {
+    if (config.headers) {
+      if (typeof config.headers.delete === 'function') {
+        config.headers.delete('Content-Type');
+        config.headers.delete('content-type');
+      }
+      delete config.headers['Content-Type'];
+      delete config.headers['content-type'];
+    }
+  }
+  return config;
 });
 
 api.interceptors.response.use(

@@ -12,14 +12,8 @@ export const magangService = {
 
   // Attendances
   getTodayAttendance: () => api.get('/magang/attendances/today'),
-  checkIn: (formData) =>
-    api.post('/magang/attendances/checkin', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
-  checkOut: (formData) =>
-    api.post('/magang/attendances/checkout', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+  checkIn: (formData) => api.post('/magang/attendances/checkin', formData),
+  checkOut: (formData) => api.post('/magang/attendances/checkout', formData),
   getMyAttendances: (params) => api.get('/magang/attendances/me', { params }),
   getAllAttendances: (params) => api.get('/magang/attendances', { params }),
   correctAttendance: (id, data) => api.patch(`/magang/attendances/${id}`, data),
