@@ -57,12 +57,15 @@ const renderKartu = (kartu, hasPermission) => {
   const { modul, nama, data = {} } = kartu;
 
   if (modul === 'magang') {
+    // Sembunyikan jika role tidak memiliki izin kelola magang (misal: role Finance)
+    if (!hasPermission('magang:kelola')) return null;
+
     return (
       <ModuleCard
         key={modul}
         title={nama}
         subtitle="Anak magang dalam periode magang hari ini"
-        link={hasPermission('magang:kelola') ? '/admin/magang/interns' : null}
+        link="/admin/magang/interns"
         linkLabel="Lihat data anak magang"
       >
         <Stat icon={Users} label="Anak magang aktif" value={data.anak_magang_aktif ?? 0} />
@@ -71,13 +74,16 @@ const renderKartu = (kartu, hasPermission) => {
   }
 
   if (modul === 'keuangan') {
+    // Sembunyikan jika role tidak memiliki izin lihat/kelola keuangan (misal: role Operasional Magang)
+    if (!hasPermission('keuangan:lihat') && !hasPermission('keuangan:kelola')) return null;
+
     const saldo = Number(data.saldo) || 0;
     return (
       <ModuleCard
         key={modul}
         title={nama}
         subtitle={`Ringkasan ${formatBulan(data.bulan)}`}
-        link={hasPermission('keuangan:lihat') ? '/admin/keuangan/ringkasan' : null}
+        link="/admin/keuangan/ringkasan"
         linkLabel="Lihat ringkasan keuangan"
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -170,10 +176,17 @@ export const AdminDashboardPage = () => {
       ) : (
         !error && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-            {kartu.length === 0 ? (
-              <p className="text-sm text-slate-400">Belum ada modul yang menyediakan ringkasan.</p>
+            {kartu
+              .map((k) => renderKartu(k, hasPermission))
+              .filter(Boolean).length === 0 ? (
+              <div className="col-span-full p-8 text-center bg-white rounded-xl border border-slate-200">
+                <p className="text-sm text-slate-600 font-medium">Belum ada ringkasan modul yang dapat ditampilkan untuk role Anda.</p>
+                <p className="text-xs text-slate-400 mt-1">Silakan gunakan menu navigasi di sebelah kiri untuk mengelola modul Anda.</p>
+              </div>
             ) : (
-              kartu.map((k) => renderKartu(k, hasPermission))
+              kartu
+                .map((k) => renderKartu(k, hasPermission))
+                .filter(Boolean)
             )}
           </div>
         )

@@ -151,12 +151,35 @@ export const DashboardLayout = () => {
     },
   ];
 
+  // Filter fallback menu admin berdasarkan permission agar staf Finance tidak melihat Magang, dan sebaliknya
+  const filterNavByPermissions = (groups) => {
+    return groups
+      .map((g) => ({
+        ...g,
+        items: g.items.filter((item) => {
+          if (item.path === '/admin/dashboard') return hasPermission('core:dashboard');
+          if (item.path.startsWith('/admin/magang/')) return hasPermission('magang:kelola');
+          if (item.path.startsWith('/admin/keuangan/')) {
+            if (item.path === '/admin/keuangan/ringkasan') {
+              return hasPermission('keuangan:lihat') || hasPermission('keuangan:kelola');
+            }
+            return hasPermission('keuangan:kelola');
+          }
+          if (item.path === '/admin/pengaturan/pengguna') return hasPermission('core:pengguna');
+          if (item.path === '/admin/pengaturan/lokasi') return hasPermission('core:lokasi');
+          if (item.path === '/admin/profil') return true;
+          return true;
+        }),
+      }))
+      .filter((g) => g.items.length > 0);
+  };
+
   // Menu statis hanya cadangan bila GET /menu gagal
   const navGroups = serverNavGroups?.length
     ? serverNavGroups
     : isInternPortal
       ? defaultInternNavGroups
-      : defaultAdminNavGroups;
+      : filterNavByPermissions(defaultAdminNavGroups);
 
   // Nama & Role dari user sesi login
   const displayName = user?.nama || (isInternPortal ? 'Peserta Magang' : 'Administrator');

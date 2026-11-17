@@ -5,7 +5,42 @@ import { useAuth } from '../../../context/AuthContext';
 import { coreService } from '../../core/services/coreService';
 import { Plus, ChevronDown, ChevronRight, X, ShieldCheck, Loader2, AlertCircle } from 'lucide-react';
 
-const ROLE_ANAK_MAGANG = 'Anak Magang';
+const isInternRole = (name) => {
+  const n = String(name || '').trim().toLowerCase();
+  return n === 'anak magang' || n === 'peserta magang';
+};
+
+const renderRoleBadge = (roleName) => {
+  const name = String(roleName || '-');
+  const lower = name.toLowerCase();
+
+  if (lower.includes('finance') || lower.includes('keuangan')) {
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+        {name}
+      </span>
+    );
+  }
+  if (lower.includes('operasional') || (lower.includes('magang') && !isInternRole(name))) {
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-800 border border-sky-200">
+        {name}
+      </span>
+    );
+  }
+  if (isInternRole(name)) {
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+        {name}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#17362f]/10 text-[#17362f] border border-[#17362f]/20">
+      {name}
+    </span>
+  );
+};
 
 const MODUL_LABEL = {
   core: 'Core (Dashboard, Pengguna, Lokasi)',
@@ -134,10 +169,10 @@ export const AdminUsersPage = () => {
     });
   }, [users, searchQuery, roleFilter, statusFilter]);
 
-  const hasDeactivatedIntern = users.some((u) => u.role === ROLE_ANAK_MAGANG && !u.aktif);
+  const hasDeactivatedIntern = users.some((u) => isInternRole(u.role) && !u.aktif);
 
-  // Akun Anak Magang dibuat lewat Data Anak Magang agar terhubung ke data peserta (MG-01)
-  const assignableRoles = roles.filter((r) => r.nama !== ROLE_ANAK_MAGANG);
+  // Akun peserta magang dibuat lewat Data Anak Magang agar terhubung ke data peserta (MG-01)
+  const assignableRoles = roles.filter((r) => !isInternRole(r.nama));
   const roleOptions = (list) => list.map((r) => ({ value: r.id, label: r.nama }));
 
   // ===== Tambah pengguna =====
@@ -479,7 +514,7 @@ export const AdminUsersPage = () => {
                             </p>
                             <p className="text-[11px] text-slate-400 mt-0.5">{item.email}</p>
                           </td>
-                          <td className="py-4 px-6 text-slate-700 font-medium whitespace-nowrap">{item.role}</td>
+                          <td className="py-4 px-6 whitespace-nowrap">{renderRoleBadge(item.role)}</td>
                           <td className="py-4 px-6 whitespace-nowrap">
                             {item.aktif ? (
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#e7f5ec] text-[#176a43] border border-[#c6e9d4]">
@@ -766,9 +801,9 @@ export const AdminUsersPage = () => {
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Role</label>
-              {editUser.role === ROLE_ANAK_MAGANG ? (
+              {isInternRole(editUser.role) ? (
                 <p className="text-xs text-slate-500">
-                  Anak Magang · role akun anak magang dikelola lewat Data Anak Magang.
+                  {editUser.role} · role akun magang dikelola lewat Data Anak Magang.
                 </p>
               ) : (
                 <RadioCards

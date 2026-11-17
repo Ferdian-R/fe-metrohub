@@ -44,20 +44,47 @@ const ProtectedRoute = ({ children }) => {
 // Pengarah berdasarkan permission (bukan nama role), sesuai CR-03
 const RoleBasedRedirect = () => {
   const { hasPermission } = useAuth();
+
+  // Jika Peserta / Anak Magang (punya magang:absen dan bukan pengelola)
   if (hasPermission('magang:absen') && !hasPermission('magang:kelola')) {
     return <Navigate to="/magang/dashboard" replace />;
   }
-  if (hasPermission('core:dashboard')) return <Navigate to="/admin/dashboard" replace />;
-  if (hasPermission('magang:kelola')) return <Navigate to="/admin/magang/interns" replace />;
-  if (hasPermission('keuangan:kelola')) return <Navigate to="/admin/keuangan/transaksi" replace />;
-  if (hasPermission('keuangan:lihat')) return <Navigate to="/admin/keuangan/ringkasan" replace />;
+
+  // Jika punya akses dashboard (Super Admin, atau Finance / Operasional Magang yang memiliki izin dashboard)
+  if (hasPermission('core:dashboard')) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
+  // Jika tanpa akses dashboard:
+  // Role Operasional Magang diarahkan langsung ke Data Anak Magang
+  if (hasPermission('magang:kelola')) {
+    return <Navigate to="/admin/magang/interns" replace />;
+  }
+
+  // Role Finance diarahkan langsung ke Transaksi atau Ringkasan Keuangan
+  if (hasPermission('keuangan:kelola')) {
+    return <Navigate to="/admin/keuangan/transaksi" replace />;
+  }
+  if (hasPermission('keuangan:lihat')) {
+    return <Navigate to="/admin/keuangan/ringkasan" replace />;
+  }
+
+  // Role Pengaturan Pengguna
+  if (hasPermission('core:pengguna')) {
+    return <Navigate to="/admin/pengaturan/pengguna" replace />;
+  }
+
   return <Navigate to="/admin/profil" replace />;
 };
 
 // Halaman tanpa izin ditolak di frontend juga (backend tetap memeriksa dan membalas 403)
-const RequirePermission = ({ permission, children }) => {
+const RequirePermission = ({ permission, permissions, children }) => {
   const { hasPermission } = useAuth();
-  if (hasPermission(permission)) return children;
+  const allowed = permissions
+    ? permissions.some((p) => hasPermission(p))
+    : hasPermission(permission);
+
+  if (allowed) return children;
   return (
     <div className="py-24 text-center text-slate-500">
       <ShieldAlert className="w-10 h-10 mx-auto text-slate-300 mb-3" />
@@ -67,7 +94,12 @@ const RequirePermission = ({ permission, children }) => {
   );
 };
 
-const guard = (permission, element) => <RequirePermission permission={permission}>{element}</RequirePermission>;
+const guard = (permission, element) => {
+  if (Array.isArray(permission)) {
+    return <RequirePermission permissions={permission}>{element}</RequirePermission>;
+  }
+  return <RequirePermission permission={permission}>{element}</RequirePermission>;
+};
 
 export default function App() {
   return (
@@ -99,7 +131,7 @@ export default function App() {
               <Route path="admin/keuangan/transaksi" element={guard('keuangan:kelola', <TransactionsPage />)} />
               <Route path="admin/keuangan/kategori" element={guard('keuangan:kelola', <CategoriesPage />)} />
               <Route path="admin/profil" element={<AccountProfilePage />} />
-              <Route path="admin/keuangan/ringkasan" element={guard('keuangan:lihat', <FinanceSummaryPage />)} />
+              <Route path="admin/keuangan/ringkasan" element={guard(['keuangan:lihat', 'keuangan:kelola'], <FinanceSummaryPage />)} />
 
               {/* Portal Anak Magang Routes (M-01) */}
               <Route path="magang/dashboard" element={guard('magang:absen', <InternDashboardPage />)} />
