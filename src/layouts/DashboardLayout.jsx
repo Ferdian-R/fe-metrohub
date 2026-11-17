@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { coreService } from '../modules/core/services/coreService';
+import { getRoleType } from '../utils/roleUtils';
 import {
   LayoutGrid,
   Users,
@@ -81,7 +82,8 @@ export const DashboardLayout = () => {
     };
   }, [user]);
 
-  const isInternUser = hasPermission('magang:absen') && !hasPermission('magang:kelola');
+  const roleType = getRoleType(user);
+  const isInternUser = roleType === 'intern';
   const profilePath = isInternUser ? '/magang/profil' : '/admin/profil';
 
   const mapMenuPath = (p) => (p === '/profil' ? profilePath : BACKEND_PATH_MAP[p] || p);
@@ -151,22 +153,70 @@ export const DashboardLayout = () => {
     },
   ];
 
-  // Filter fallback menu admin berdasarkan permission agar staf Finance tidak melihat Magang, dan sebaliknya
-  const filterNavByPermissions = (groups) => {
+  const defaultFinanceNavGroups = [
+    {
+      header: 'MANAJEMEN KEUANGAN',
+      items: [
+        { name: 'Transaksi', path: '/admin/keuangan/transaksi', icon: FileText },
+        { name: 'Kategori', path: '/admin/keuangan/kategori', icon: Tag },
+        { name: 'Ringkasan Keuangan', path: '/admin/keuangan/ringkasan', icon: BarChart2 },
+      ],
+    },
+    {
+      header: 'PENGATURAN',
+      items: [
+        { name: 'Profil', path: '/admin/profil', icon: User },
+      ],
+    },
+  ];
+
+  const defaultOperasionalMagangNavGroups = [
+    {
+      header: 'MANAJEMEN MAGANG',
+      items: [
+        { name: 'Data Anak Magang', path: '/admin/magang/interns', icon: Users },
+        { name: 'Absensi', path: '/admin/magang/absensi', icon: Clock },
+        { name: 'Logbook', path: '/admin/magang/logbook', icon: BookOpen },
+        { name: 'Penugasan', path: '/admin/magang/penugasan', icon: CheckSquare },
+      ],
+    },
+    {
+      header: 'PENGATURAN',
+      items: [
+        { name: 'Profil', path: '/admin/profil', icon: User },
+      ],
+    },
+  ];
+
+  // Filter menu secara ketat berdasarkan peran hasil autentikasi
+  const filterNavByRole = (groups) => {
     return groups
       .map((g) => ({
         ...g,
         items: g.items.filter((item) => {
-          if (item.path === '/admin/dashboard') return hasPermission('core:dashboard');
-          if (item.path.startsWith('/admin/magang/')) return hasPermission('magang:kelola');
+          // Role Finance: HANYA modul keuangan & profil
+          if (roleType === 'finance') {
+            return item.path.startsWith('/admin/keuangan/') || item.path === '/admin/profil';
+          }
+          // Role Operasional Magang: HANYA modul magang & profil
+          if (roleType === 'operasional_magang') {
+            return item.path.startsWith('/admin/magang/') || item.path === '/admin/profil';
+          }
+          // Role Peserta Magang: HANYA rute magang
+          if (roleType === 'intern') {
+            return item.path.startsWith('/magang/');
+          }
+          // Super Admin / Admin: modul lengkap
+          if (item.path === '/admin/dashboard') return true;
+          if (item.path.startsWith('/admin/magang/')) return hasPermission('magang:kelola') || roleType === 'admin';
           if (item.path.startsWith('/admin/keuangan/')) {
             if (item.path === '/admin/keuangan/ringkasan') {
-              return hasPermission('keuangan:lihat') || hasPermission('keuangan:kelola');
+              return hasPermission('keuangan:lihat') || hasPermission('keuangan:kelola') || roleType === 'admin';
             }
-            return hasPermission('keuangan:kelola');
+            return hasPermission('keuangan:kelola') || roleType === 'admin';
           }
-          if (item.path === '/admin/pengaturan/pengguna') return hasPermission('core:pengguna');
-          if (item.path === '/admin/pengaturan/lokasi') return hasPermission('core:lokasi');
+          if (item.path === '/admin/pengaturan/pengguna') return hasPermission('core:pengguna') || roleType === 'admin';
+          if (item.path === '/admin/pengaturan/lokasi') return hasPermission('core:lokasi') || roleType === 'admin';
           if (item.path === '/admin/profil') return true;
           return true;
         }),
@@ -174,12 +224,17 @@ export const DashboardLayout = () => {
       .filter((g) => g.items.length > 0);
   };
 
+  const getBaseNavGroups = () => {
+    if (roleType === 'intern') return defaultInternNavGroups;
+    if (roleType === 'finance') return defaultFinanceNavGroups;
+    if (roleType === 'operasional_magang') return defaultOperasionalMagangNavGroups;
+    return defaultAdminNavGroups;
+  };
+
   // Menu statis hanya cadangan bila GET /menu gagal
   const navGroups = serverNavGroups?.length
-    ? serverNavGroups
-    : isInternPortal
-      ? defaultInternNavGroups
-      : filterNavByPermissions(defaultAdminNavGroups);
+    ? filterNavByRole(serverNavGroups)
+    : filterNavByRole(getBaseNavGroups());
 
   // Nama & Role dari user sesi login
   const displayName = user?.nama || (isInternPortal ? 'Peserta Magang' : 'Administrator');
@@ -198,11 +253,32 @@ export const DashboardLayout = () => {
     timeZone: 'Asia/Jakarta',
   }).format(new Date());
 
-  const headerContext = isInternPortal ? (
-    <>Masa magang aktif <span className="font-semibold text-slate-700">{todayFormatted}</span></>
-  ) : (
-    <>Operasional internal <span className="font-semibold text-slate-700">{todayFormatted}</span></>
-  );
+  const workspaceTitle =
+    roleType === 'intern'
+      ? 'Portal Anak Magang'
+      : roleType === 'finance'
+        ? 'Ruang Kerja Keuangan'
+        : roleType === 'operasional_magang'
+          ? 'Ruang Kerja Magang'
+          : 'Ruang Kerja Administrator';
+
+  const workspaceSubtitle =
+    roleType === 'finance'
+      ? 'Modul Manajemen Keuangan'
+      : roleType === 'operasional_magang'
+        ? 'Modul Operasional Magang'
+        : 'Sistem Terintegrasi MetroHub';
+
+  const headerContext =
+    roleType === 'intern' ? (
+      <>Masa magang aktif <span className="font-semibold text-slate-700">{todayFormatted}</span></>
+    ) : roleType === 'finance' ? (
+      <>Manajemen Keuangan <span className="font-semibold text-slate-700">{todayFormatted}</span></>
+    ) : roleType === 'operasional_magang' ? (
+      <>Operasional Magang <span className="font-semibold text-slate-700">{todayFormatted}</span></>
+    ) : (
+      <>Operasional internal <span className="font-semibold text-slate-700">{todayFormatted}</span></>
+    );
 
   return (
     <div className="min-h-screen bg-[#f4f6f5] flex flex-col md:flex-row font-sans text-slate-800">
@@ -271,10 +347,8 @@ export const DashboardLayout = () => {
 
         {/* Sidebar Footer */}
         <div className="p-4 mx-3 mb-4 rounded-xl border border-[#2b5349] bg-[#15322b] shrink-0">
-          <p className="text-xs font-semibold text-white">
-            {isInternPortal ? 'Portal Anak Magang' : 'Ruang kerja Admin'}
-          </p>
-          <p className="text-[11px] text-[#71988b]">Sistem Terintegrasi MetroHub</p>
+          <p className="text-xs font-semibold text-white">{workspaceTitle}</p>
+          <p className="text-[11px] text-[#71988b]">{workspaceSubtitle}</p>
         </div>
       </aside>
 
